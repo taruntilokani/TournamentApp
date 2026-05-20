@@ -797,7 +797,7 @@
   </div>
 </div>
 
-<div class="section adminOnly hidden" id="usersAdminSection">
+<div class="section featureView adminOnly hidden" id="usersAdminSection" role="tabpanel" aria-labelledby="tabUsers">
   <div class="row" style="justify-content: space-between; align-items: flex-start;">
     <div>
       <h3 style="margin-top:0">Users</h3>
@@ -841,8 +841,8 @@
   <button id="tabTeams" class="bottomNavBtn" data-view="teams" role="tab" aria-controls="viewTeams" aria-selected="false" disabled>Teams</button>
   <button id="tabSchedule" class="bottomNavBtn" data-view="schedule" role="tab" aria-controls="viewSchedule" aria-selected="false" disabled>Schedule</button>
   <button id="tabPoints" class="bottomNavBtn" data-view="points" role="tab" aria-controls="viewPoints" aria-selected="false" disabled>Points</button>
-  <button id="tabPlayoff" class="bottomNavBtn" data-view="playoff" role="tab" aria-controls="viewPlayoff" aria-selected="false" disabled>Playoff</button>
-  <button id="tabFinal" class="bottomNavBtn" data-view="final" role="tab" aria-controls="viewFinal" aria-selected="false" disabled>Final</button>
+  <button id="tabPlayoff" class="bottomNavBtn" data-view="playoff" role="tab" aria-controls="viewPlayoff" aria-selected="false" disabled>Finals</button>
+  <button id="tabUsers" class="bottomNavBtn" data-view="users" role="tab" aria-controls="usersAdminSection" aria-selected="false" disabled>Users</button>
   <button id="tabLeaderboard" class="bottomNavBtn" data-view="leaderboard" role="tab" aria-controls="viewLeaderboard" aria-selected="false">Leaderboard</button>
 </div>
 
@@ -1004,16 +1004,12 @@
   <div id="pointsTableOutput"></div>
 </div>
 
-<!-- Playoff tab -->
+<!-- Finals tab -->
 <div class="section featureView hidden" id="viewPlayoff" role="tabpanel" aria-labelledby="tabPlayoff">
-  <h3 style="margin-top:0">Playoff Bracket</h3>
-  <div class="hint">Seeds fill automatically from standings. Update scores to advance teams.</div>
+  <h3 style="margin-top:0">Finals</h3>
+  <div class="hint">Seeds fill automatically from standings. Update playoff scores to advance teams into the championship match.</div>
   <div id="playoffBracketOutput"></div>
-</div>
-
-<!-- Final tab -->
-<div class="section featureView hidden" id="viewFinal" role="tabpanel" aria-labelledby="tabFinal">
-  <h3 style="margin-top:0">Championship Match</h3>
+  <h3>Championship Match</h3>
   <div id="finalMatchOutput"></div>
 </div>
 
@@ -1049,8 +1045,8 @@ const STORAGE_KEYS = {
   const viewSchedule = document.getElementById('viewSchedule');
   const viewPoints = document.getElementById('viewPoints');
   const viewPlayoff = document.getElementById('viewPlayoff');
-  const viewFinal = document.getElementById('viewFinal');
   const viewLeaderboard = document.getElementById('viewLeaderboard');
+  const viewUsers = document.getElementById('usersAdminSection');
   const bottomNav = document.getElementById('bottomNav');
 
   const newTournamentNameInput = document.getElementById('newTournamentName');
@@ -1146,8 +1142,8 @@ const STORAGE_KEYS = {
       viewSchedule,
       viewPoints,
       viewPlayoff,
-      viewFinal,
       viewLeaderboard,
+      viewUsers,
     ].forEach(v => {
       if (!v) return;
       v.classList.add('hidden');
@@ -1183,10 +1179,14 @@ const STORAGE_KEYS = {
       const v = btn.dataset.view;
       if (v === 'tournament' || v === 'players' || v === 'leaderboard') {
         btn.disabled = false;
+      } else if (v === 'users') {
+        const isAdmin = !!currentAuthSession()?.isAdmin;
+        btn.disabled = !isAdmin;
+        btn.hidden = !isAdmin;
       } else if (v === 'teams') {
         btn.disabled = !hasTournament;
       } else {
-        // schedule/points/playoff/final
+        // schedule/points/finals
         btn.disabled = !hasSchedule;
       }
 
@@ -1198,6 +1198,8 @@ const STORAGE_KEYS = {
   }
 
   function setView(view) {
+    if (view === 'final') view = 'playoff';
+    if (view === 'users' && !currentAuthSession()?.isAdmin) view = 'tournament';
     // Guard against disabled navigation
     const btn = document.querySelector(`.bottomNavBtn[data-view="${view}"]`);
     if (btn && btn.disabled) return;
@@ -1212,8 +1214,8 @@ const STORAGE_KEYS = {
       schedule: viewSchedule,
       points: viewPoints,
       playoff: viewPlayoff,
-      final: viewFinal,
       leaderboard: viewLeaderboard,
+      users: viewUsers,
     };
     const el = map[view] || viewTournament;
     if (el) {
@@ -1238,8 +1240,11 @@ const STORAGE_KEYS = {
     if (view === 'schedule') {
       renderSchedule(tournament?.matches || []);
     }
-    if (view === 'points' || view === 'playoff' || view === 'final') {
+    if (view === 'points' || view === 'playoff') {
       recalcAndRender();
+    }
+    if (view === 'users') {
+      renderUsersAdmin();
     }
 
     updateBottomNavState();
@@ -3029,12 +3034,11 @@ function renderFinalSummary(finalMatch) {
     const authSection = document.getElementById('authSection');
     const sessionBar = document.getElementById('sessionBar');
     const signedInUser = document.getElementById('signedInUser');
-    const usersAdminSection = document.getElementById('usersAdminSection');
     if (authSection) authSection.classList.add('hidden');
     if (sessionBar) sessionBar.classList.remove('hidden');
     if (signedInUser) signedInUser.textContent = `${session.displayName || session.username}${session.isAdmin ? ' (admin)' : ''}`;
-    if (usersAdminSection) usersAdminSection.classList.toggle('hidden', !session.isAdmin);
     if (session.isAdmin) renderUsersAdmin();
+    if (typeof updateBottomNavState === 'function') updateBottomNavState();
   }
 
   function showLoginOrReset() {
