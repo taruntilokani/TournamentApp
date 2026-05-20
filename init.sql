@@ -693,6 +693,7 @@ AS $$
 DECLARE
   user_row api.app_users;
   session_token TEXT;
+  active_session_count INTEGER;
 BEGIN
   SELECT * INTO user_row
   FROM api.app_users u
@@ -703,7 +704,18 @@ BEGIN
     RAISE EXCEPTION 'Invalid username or password' USING ERRCODE = '28000';
   END IF;
 
+  PERFORM pg_advisory_xact_lock(hashtext(user_row.id::text));
+
   DELETE FROM api.app_sessions WHERE expires_at <= NOW();
+
+  SELECT COUNT(*) INTO active_session_count
+  FROM api.app_sessions s
+  WHERE s.user_id = user_row.id
+    AND s.expires_at > NOW();
+
+  IF active_session_count >= 3 THEN
+    RAISE EXCEPTION 'Login session limit exceeded. Please logout from another device before logging in again.' USING ERRCODE = '28000';
+  END IF;
 
   INSERT INTO api.app_sessions (user_id)
   VALUES (user_row.id)

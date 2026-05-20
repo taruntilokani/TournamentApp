@@ -51,7 +51,7 @@ Username: admin
 Password: TournamentApp2026
 ```
 
-Admins can create users from the in-app **Users** section. New users receive a temporary password and are forced to reset it on their first login before they can access the tournament screens.
+Admins can create users from the in-app **Users** section. New users receive a temporary password and are forced to reset it on their first login before they can access the tournament screens. Each user can have up to 3 active login sessions at a time; a fourth login shows a session limit message until another device logs out or the session expires.
 
 Auth-related RPCs exposed through PostgREST:
 

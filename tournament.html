@@ -3161,7 +3161,13 @@ function renderFinalSummary(finalMatch) {
         }
         location.reload();
       } catch (error) {
-        setAuthStatus(status, 'Invalid username or password.', 'error');
+        const message = String(error?.message || error || '');
+        const sessionLimitMessage = 'Login session limit exceeded. Please logout from another device before logging in again.';
+        setAuthStatus(
+          status,
+          message.includes('Login session limit exceeded') ? sessionLimitMessage : 'Invalid username or password.',
+          'error'
+        );
       }
     });
 
