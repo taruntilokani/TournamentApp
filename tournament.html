@@ -167,6 +167,7 @@
     input[type=number] {
       appearance: textfield;
       -moz-appearance: textfield;
+      text-align: center;
     }
     input[type=number]::-webkit-outer-spin-button,
     input[type=number]::-webkit-inner-spin-button {
@@ -2035,6 +2036,40 @@ const STORAGE_KEYS = {
     return groups;
   }
 
+  function matchKey(match) {
+    return [
+      match.stage || "",
+      match.groupIndex === null || match.groupIndex === undefined ? "ALL" : match.groupIndex,
+      match.team1 || "",
+      match.team2 || "",
+    ].join("||");
+  }
+
+  function sameMatchSchedule(oldMatches, newMatches) {
+    if (!Array.isArray(oldMatches) || oldMatches.length !== newMatches.length) return false;
+    return newMatches.every((match, index) => matchKey(match) === matchKey(oldMatches[index]));
+  }
+
+  function carryExistingScores(oldMatches, newMatches) {
+    const previousByKey = new Map();
+    (oldMatches || []).forEach(match => {
+      previousByKey.set(matchKey(match), match);
+    });
+
+    newMatches.forEach(match => {
+      const previous = previousByKey.get(matchKey(match));
+      if (!previous) return;
+      match.score1 = previous.score1 ?? null;
+      match.score2 = previous.score2 ?? null;
+    });
+
+    return newMatches;
+  }
+
+  function scheduleSignatureFor(matches) {
+    return (matches || []).map(matchKey).join(";;");
+  }
+
   // Final match: schedule between #1 and #2 from points table
   function buildFinalMatchFromStandings(standings) {
     if (standings.length < 2) return null;
@@ -2237,7 +2272,7 @@ const STORAGE_KEYS = {
       const table = document.createElement('table');
       const thead = document.createElement('thead');
       const trh = document.createElement('tr');
-      ['Match', 'Team 1', 'Score', ':', 'Score', 'Team 2'].forEach(h => {
+      ['Match', 'Team 1', 'Score', 'vs', 'Score', 'Team 2'].forEach(h => {
         const th = document.createElement('th');
         th.textContent = h;
         trh.appendChild(th);
@@ -2268,7 +2303,7 @@ const STORAGE_KEYS = {
         tr.appendChild(tdS1);
 
         const tdSep = document.createElement('td');
-        tdSep.textContent = ':';
+        tdSep.textContent = 'vs';
         tr.appendChild(tdSep);
 
         const tdS2 = document.createElement('td');
@@ -2527,8 +2562,9 @@ function renderFinalSummary(finalMatch) {
 
     const typeOk = !!tournamentTypeSelect.value;
     const fixtureOk = !!fixtureTypeSelect.value;
-    // schedule depends on generated teams
-    const teamsOk = (tournament.teams || []).length >= 2;
+    const builtTeamsCount = (tournament.teams || []).length;
+    const requestedTeamsCount = parseInt(teamsCountInput.value || '0', 10);
+    const teamsOk = builtTeamsCount >= 2 && builtTeamsCount === requestedTeamsCount;
 
     let groupsOk = true;
     if (tournamentTypeSelect.value === 'Groups') {
@@ -2741,8 +2777,6 @@ function renderFinalSummary(finalMatch) {
     renderPlayersList();
     updateSavePlayerListBtnState();
     if (tournament) {
-      tournament.teams = [];
-      tournament.teamPlayers = {};
       renderTeamsPreview();
       updateBuildTeamsBtn();
       updateGenerateScheduleBtn();
@@ -2784,8 +2818,6 @@ function renderFinalSummary(finalMatch) {
     updateSavePlayerListBtnState();
     renderPlayersList();
     if (tournament) {
-      tournament.teams = [];
-      tournament.teamPlayers = {};
       renderTeamsPreview();
       updateBuildTeamsBtn();
       updateGenerateScheduleBtn();
@@ -2824,8 +2856,6 @@ function renderFinalSummary(finalMatch) {
     updateSavePlayerListBtnState();
     renderPlayersList();
     if (tournament) {
-      tournament.teams = [];
-      tournament.teamPlayers = {};
       renderTeamsPreview();
       updateBuildTeamsBtn();
       updateGenerateScheduleBtn();
@@ -2836,9 +2866,6 @@ function renderFinalSummary(finalMatch) {
   matchTypeSelect.addEventListener('change', () => {
     if (!buildTeamsBtn || !tournament) return;
     tournament.matchType = matchTypeSelect.value;
-    // reset teams mapping
-    tournament.teams = [];
-    tournament.teamPlayers = {};
     saveTournamentAndRefresh();
     renderTeamsPreview();
     updateBuildTeamsBtn();
@@ -2848,9 +2875,6 @@ function renderFinalSummary(finalMatch) {
   teamsCountInput.addEventListener('input', () => {
     if (!buildTeamsBtn || !tournament) return;
     tournament.teamsCount = parseInt(teamsCountInput.value || '0', 10);
-    // reset teams mapping
-    tournament.teams = [];
-    tournament.teamPlayers = {};
     saveTournamentAndRefresh();
     renderTeamsPreview();
     updateBuildTeamsBtn();
@@ -2873,12 +2897,13 @@ function renderFinalSummary(finalMatch) {
 
     const teams = [];
     const teamPlayers = {};
-    // Create empty assignments; user will pick players from dropdowns.
+    const existingTeamPlayers = tournament.teamPlayers || {};
     const empty = new Array(req).fill('');
     for (let i = 1; i <= teamsCount; i++) {
-      const teamName = `Team ${i}`;
+      const teamName = "Team " + i;
+      const existing = Array.isArray(existingTeamPlayers[teamName]) ? existingTeamPlayers[teamName] : [];
       teams.push(teamName);
-      teamPlayers[teamName] = [...empty];
+      teamPlayers[teamName] = empty.map((_, index) => existing[index] || '');
     }
 
     if ((!tournament.players || tournament.players.length === 0)) {
@@ -2890,14 +2915,6 @@ function renderFinalSummary(finalMatch) {
 
     tournament.teams = teams;
     tournament.teamPlayers = teamPlayers;
-
-    // Reset any existing schedule because teams changed
-    tournament.matches = [];
-    tournament.finalMatch = null;
-    tournament.finalResult = null;
-
-    clearOutputs();
-    updateBottomNavState();
 
     saveTournamentAndRefresh();
     renderTeamsPreview();
@@ -2912,25 +2929,35 @@ function renderFinalSummary(finalMatch) {
       return;
     }
 
-    // reset
     matchIdCounter = 1;
-    tournament.matches = [];
-    tournament.finalMatch = null;
-    tournament.finalResult = null;
-    tournament.groupAssignments = [];
+    const existingMatches = Array.isArray(tournament.matches) ? tournament.matches : [];
+    let nextMatches = [];
+    let nextGroupAssignments = [];
 
     if (tournament.type === 'League') {
-      tournament.matches = buildLeagueMatches(tournament.teams, tournament.fixtureType);
+      nextMatches = buildLeagueMatches(tournament.teams, tournament.fixtureType);
     } else if (tournament.type === 'Groups') {
       const gc = parseInt(groupsCountInput.value, 10);
       const tpg = parseInt(teamsPerGroupInput.value, 10);
-      const groups = partitionIntoGroups(tournament.teams, gc, tpg);
-      tournament.groupAssignments = groups;
-      tournament.matches = buildGroupMatches(groups, tournament.fixtureType);
+      nextGroupAssignments = partitionIntoGroups(tournament.teams, gc, tpg);
+      nextMatches = buildGroupMatches(nextGroupAssignments, tournament.fixtureType);
     } else {
       alert('Select tournament type.');
       return;
     }
+
+    const unchangedSchedule = sameMatchSchedule(existingMatches, nextMatches);
+    tournament.groupAssignments = nextGroupAssignments;
+
+    if (!unchangedSchedule) {
+      tournament.matches = carryExistingScores(existingMatches, nextMatches);
+      tournament.finalMatch = null;
+      tournament.finalResult = null;
+    } else {
+      tournament.matches = existingMatches;
+    }
+
+    tournament.scheduleSignature = scheduleSignatureFor(tournament.matches);
 
     saveTournamentAndRefresh();
     renderSchedule(tournament.matches);
