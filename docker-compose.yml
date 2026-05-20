@@ -8,6 +8,7 @@ services:
     volumes:
       - ./tournament.html:/usr/share/nginx/html/index.html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./.htpasswd:/etc/nginx/.htpasswd:ro
     depends_on:
       - api
 

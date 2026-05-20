@@ -39,6 +39,41 @@ curl http://localhost:8080/api/app_storage
 ```
 
 
+
+## Login / Admin Access
+
+Nginx protects the whole app and API with HTTP Basic Auth. The real password file is `.htpasswd`, which is intentionally ignored by Git.
+
+Create or rotate the admin password on the host/runtime folder:
+
+```bash
+cd /home/devops/badminton-runtime
+openssl passwd -apr1
+# paste the generated hash after admin: in .htpasswd
+```
+
+Example `.htpasswd` format:
+
+```text
+admin:$apr1$...generated_hash...
+```
+
+After changing `.htpasswd`, reload the web container:
+
+```bash
+sudo -n docker compose up -d --force-recreate web
+```
+
+Validation examples:
+
+```bash
+# should return 401
+curl -I http://localhost:8080/
+
+# should return 200
+curl -u admin:YOUR_PASSWORD http://localhost:8080/
+```
+
 ## Normalized Database Tables
 
 The frontend still uses the original browser-friendly storage keys, but PostgreSQL now decomposes tournament and player-list JSON into real relational tables through triggers on `api.app_storage`. This keeps the current UI stable while making reporting and future API work much cleaner.
