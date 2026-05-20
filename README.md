@@ -61,7 +61,24 @@ curl http://localhost:8080/api/team_players
 curl http://localhost:8080/api/matches
 ```
 
-The compatibility table remains available at `api.app_storage` so the existing frontend can continue to save and load without a full rewrite.
+The compatibility table remains available at `api.app_storage` for small UI-only keys such as active tab or local draft state. Tournament and player-list reads/writes now use normalized RPC endpoints.
+
+Normalized write/read RPCs:
+
+```bash
+# Rebuild browser app state from normalized tables
+curl http://localhost:8080/api/rpc/export_app_state
+
+# Save a tournament payload into normalized tables
+curl -X POST http://localhost:8080/api/rpc/save_tournament \
+  -H 'Content-Type: application/json' \
+  -d '{"payload": {"id": "example", "name": "Example Tournament"}}'
+
+# Delete a tournament
+curl -X POST http://localhost:8080/api/rpc/delete_tournament \
+  -H 'Content-Type: application/json' \
+  -d '{"tournament_id": "example"}'
+```
 
 ## Expose Online With ngrok
 

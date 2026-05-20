@@ -562,12 +562,15 @@
 <body>
 <script>
   // Container mode persistence:
-  // Hydrates this single-file app from the backend database, then mirrors all
-  // app localStorage changes back to the API. The existing app can stay simple
-  // and synchronous while the container stack keeps data durable in Postgres.
+  // Loads domain data from normalized PostgREST RPCs and saves tournament/player
+  // list updates through normalized database functions. Small UI-only keys still
+  // use app_storage for compatibility.
   (function bootstrapServerBackedStorage() {
     const APP_KEY_PREFIX = 'bt_';
-    const apiBase = '/api/app_storage';
+    const TOURNAMENT_PREFIX = 'bt_tournament_v1_';
+    const PLAYER_LIST_PREFIX = 'bt_playerlist_v1_';
+    const storageApi = '/api/app_storage';
+    const exportApi = '/api/rpc/export_app_state';
     const nativeSetItem = Storage.prototype.setItem;
     const nativeRemoveItem = Storage.prototype.removeItem;
 
@@ -575,65 +578,123 @@
       return typeof key === 'string' && key.startsWith(APP_KEY_PREFIX);
     }
 
+    function isTournamentKey(key) {
+      return typeof key === 'string' && key.startsWith(TOURNAMENT_PREFIX);
+    }
+
+    function isPlayerListKey(key) {
+      return typeof key === 'string' && key.startsWith(PLAYER_LIST_PREFIX);
+    }
+
     function sendJson(url, options) {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(options && options.headers ? options.headers : {}),
+      };
       return fetch(url, {
-        headers: { 'Content-Type': 'application/json' },
         keepalive: true,
         ...options,
+        headers,
       }).catch((error) => {
         console.warn('Database sync failed:', error);
       });
     }
 
+    function saveDomainKey(key, value) {
+      if (isTournamentKey(key)) {
+        try {
+          sendJson('/api/rpc/save_tournament', {
+            method: 'POST',
+            body: JSON.stringify({ payload: JSON.parse(value) }),
+          });
+        } catch (error) {
+          console.warn('Could not save tournament to normalized API:', error);
+        }
+        return true;
+      }
+
+      if (isPlayerListKey(key)) {
+        try {
+          sendJson('/api/rpc/save_player_list', {
+            method: 'POST',
+            body: JSON.stringify({ storage_key: key, payload: JSON.parse(value) }),
+          });
+        } catch (error) {
+          console.warn('Could not save player list to normalized API:', error);
+        }
+        return true;
+      }
+
+      return false;
+    }
+
+    function deleteDomainKey(key) {
+      if (isTournamentKey(key)) {
+        sendJson('/api/rpc/delete_tournament', {
+          method: 'POST',
+          body: JSON.stringify({ tournament_id: key.replace(TOURNAMENT_PREFIX, '') }),
+        });
+        return true;
+      }
+
+      if (isPlayerListKey(key)) {
+        sendJson('/api/rpc/delete_player_list', {
+          method: 'POST',
+          body: JSON.stringify({ player_list_id: key.replace(PLAYER_LIST_PREFIX, '') }),
+        });
+        return true;
+      }
+
+      return false;
+    }
+
     try {
       const xhr = new XMLHttpRequest();
-      xhr.open('GET', apiBase, false);
+      xhr.open('GET', exportApi, false);
       xhr.send(null);
 
       if (xhr.status >= 200 && xhr.status < 300) {
-        const payload = JSON.parse(xhr.responseText || '[]');
-        const rows = Array.isArray(payload) ? payload : [];
-        rows.forEach((row) => {
-          if (isAppKey(row.key)) nativeSetItem.call(localStorage, row.key, row.value);
+        const items = JSON.parse(xhr.responseText || '{}') || {};
+        Object.keys(items).forEach((key) => {
+          if (isAppKey(key)) nativeSetItem.call(localStorage, key, items[key]);
         });
       }
     } catch (error) {
-      console.warn('Could not hydrate from database. Using browser cache only.', error);
+      console.warn('Could not hydrate from normalized database APIs. Using browser cache only.', error);
     }
 
     Storage.prototype.setItem = function patchedSetItem(key, value) {
       nativeSetItem.call(this, key, value);
-      if (this === localStorage && isAppKey(key)) {
-        sendJson(apiBase, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Prefer: 'resolution=merge-duplicates,return=minimal',
-          },
-          body: JSON.stringify({ key, value: String(value) }),
-        });
-      }
+      if (this !== localStorage || !isAppKey(key)) return;
+
+      if (saveDomainKey(key, String(value))) return;
+
+      sendJson(storageApi, {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify({ key, value: String(value) }),
+      });
     };
 
     Storage.prototype.removeItem = function patchedRemoveItem(key) {
       nativeRemoveItem.call(this, key);
-      if (this === localStorage && isAppKey(key)) {
-        sendJson(`${apiBase}?key=eq.${encodeURIComponent(key)}`, { method: 'DELETE' });
-      }
+      if (this !== localStorage || !isAppKey(key)) return;
+
+      if (deleteDomainKey(key)) return;
+
+      sendJson(`${storageApi}?key=eq.${encodeURIComponent(key)}`, { method: 'DELETE' });
     };
 
-    // If someone has existing browser-only data and the database is new, seed it.
     window.addEventListener('load', () => {
       Object.keys(localStorage)
         .filter(isAppKey)
         .forEach((key) => {
-          sendJson(apiBase, {
+          const value = localStorage.getItem(key) || '';
+          if (saveDomainKey(key, value)) return;
+          sendJson(storageApi, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Prefer: 'resolution=merge-duplicates,return=minimal',
-            },
-            body: JSON.stringify({ key, value: localStorage.getItem(key) || '' }),
+            headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+            body: JSON.stringify({ key, value }),
           });
         });
     });
