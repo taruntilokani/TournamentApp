@@ -838,14 +838,12 @@
     <div id="resetPasswordStatus" class="authStatus"></div>
   </div>
 </div>
-
-
-
 <!-- Top tab bar (centered feature navigation) -->
 <div class="bottomNav" id="bottomNav" role="tablist" aria-label="Tournament features">
   <button id="tabTournament" class="bottomNavBtn active" data-view="tournament" role="tab" aria-controls="viewTournament" aria-selected="true">Tournament</button>
   <button id="tabPlayers" class="bottomNavBtn" data-view="players" role="tab" aria-controls="viewPlayers" aria-selected="false">Players</button>
   <button id="tabTeams" class="bottomNavBtn" data-view="teams" role="tab" aria-controls="viewTeams" aria-selected="false" disabled>Teams</button>
+  <button id="tabGroups" class="bottomNavBtn" data-view="groups" role="tab" aria-controls="viewGroups" aria-selected="false" disabled>Groups</button>
   <button id="tabSchedule" class="bottomNavBtn" data-view="schedule" role="tab" aria-controls="viewSchedule" aria-selected="false" disabled>Schedule</button>
   <button id="tabPoints" class="bottomNavBtn" data-view="points" role="tab" aria-controls="viewPoints" aria-selected="false" disabled>Points</button>
   <button id="tabPlayoff" class="bottomNavBtn" data-view="playoff" role="tab" aria-controls="viewPlayoff" aria-selected="false" disabled>Finals</button>
@@ -998,6 +996,17 @@
   </div>
 </div>
 
+<!-- Groups tab -->
+<div class="section featureView hidden" id="viewGroups" role="tabpanel" aria-labelledby="tabGroups">
+  <h3 style="margin-top:0">Groups</h3>
+  <div class="hint">Assign built teams into groups before generating the group-stage schedule.</div>
+  <div id="groupsAssignmentOutput"></div>
+  <div class="row" style="justify-content: flex-end; margin-top: 8px;">
+    <button id="autoFillGroupsBtn" class="secondary" disabled>Auto Fill Groups</button>
+    <button id="groupsGenerateScheduleBtn" disabled>Generate Schedule</button>
+  </div>
+</div>
+
 <!-- Schedule tab -->
 <div class="section featureView hidden" id="viewSchedule" role="tabpanel" aria-labelledby="tabSchedule">
   <h3 style="margin-top:0">Schedule</h3>
@@ -1086,6 +1095,7 @@ const STORAGE_KEYS = {
   const viewTournament = document.getElementById('viewTournament');
   const viewPlayers = document.getElementById('viewPlayers');
   const viewTeams = document.getElementById('viewTeams');
+  const viewGroups = document.getElementById('viewGroups');
   const viewSchedule = document.getElementById('viewSchedule');
   const viewPoints = document.getElementById('viewPoints');
   const viewPlayoff = document.getElementById('viewPlayoff');
@@ -1129,6 +1139,9 @@ const STORAGE_KEYS = {
   const buildTeamsBtn = document.getElementById('buildTeamsBtn');
   const teamsGenerateScheduleBtn = document.getElementById('teamsGenerateScheduleBtn');
   const teamsPreviewDiv = document.getElementById('teamsPreview');
+  const groupsAssignmentOutput = document.getElementById('groupsAssignmentOutput');
+  const autoFillGroupsBtn = document.getElementById('autoFillGroupsBtn');
+  const groupsGenerateScheduleBtn = document.getElementById('groupsGenerateScheduleBtn');
 
   const generateScheduleBtn = document.getElementById('generateScheduleBtn');
 
@@ -1183,6 +1196,7 @@ const STORAGE_KEYS = {
       viewTournament,
       viewPlayers,
       viewTeams,
+      viewGroups,
       viewSchedule,
       viewPoints,
       viewPlayoff,
@@ -1216,6 +1230,9 @@ const STORAGE_KEYS = {
 
     // groups inputs depend on tournament + type
     const groupsEnabled = hasTournament && tournamentTypeSelect.value === 'Groups';
+    const builtTeamsCount = (tournament?.teams || []).length;
+    const requestedTeamsCount = parseInt(teamsCountInput.value || '0', 10);
+    const teamsBuiltForCount = builtTeamsCount >= 2 && builtTeamsCount === requestedTeamsCount;
     groupsCountInput.disabled = !groupsEnabled;
     teamsPerGroupInput.disabled = !groupsEnabled;
 
@@ -1229,6 +1246,8 @@ const STORAGE_KEYS = {
         btn.hidden = !isAdmin;
       } else if (v === 'teams') {
         btn.disabled = !hasTournament;
+      } else if (v === 'groups') {
+        btn.disabled = !(groupsEnabled && teamsBuiltForCount);
       } else {
         // schedule/points/finals
         btn.disabled = !hasSchedule;
@@ -1255,6 +1274,7 @@ const STORAGE_KEYS = {
       tournament: viewTournament,
       players: viewPlayers,
       teams: viewTeams,
+      groups: viewGroups,
       schedule: viewSchedule,
       points: viewPoints,
       playoff: viewPlayoff,
@@ -1280,6 +1300,10 @@ const STORAGE_KEYS = {
     if (view === 'teams') {
       renderTeamsPreview();
       updateBuildTeamsBtn();
+    }
+    if (view === 'groups') {
+      renderGroupsAssignment();
+      updateGenerateScheduleBtn();
     }
     if (view === 'schedule') {
       renderSchedule(tournament?.matches || []);
@@ -2007,6 +2031,105 @@ const STORAGE_KEYS = {
     teamsPreviewDiv.appendChild(table);
   }
 
+  function renderGroupsAssignment() {
+    if (!groupsAssignmentOutput) return;
+    groupsAssignmentOutput.innerHTML = "";
+    if (!tournament) return;
+
+    if (tournament.type !== "Groups") {
+      groupsAssignmentOutput.innerHTML = '<div class="hint">Select Groups as the tournament type to assign teams into groups.</div>';
+      return;
+    }
+
+    const teams = tournament.teams || [];
+    if (teams.length < 2) {
+      groupsAssignmentOutput.innerHTML = '<div class="hint">Build teams first, then assign them into groups.</div>';
+      return;
+    }
+
+    const { groupsCount, teamsPerGroup } = getGroupConfig();
+    if (!Number.isFinite(groupsCount) || groupsCount < 1 || !Number.isFinite(teamsPerGroup) || teamsPerGroup < 2) {
+      groupsAssignmentOutput.innerHTML = '<div class="hint">Set number of groups and teams per group in Tournament before assigning groups.</div>';
+      return;
+    }
+
+    if ((groupsCount * teamsPerGroup) > teams.length) {
+      groupsAssignmentOutput.innerHTML = '<div class="hint">Group slots exceed built teams. Adjust group count, teams per group, or build more teams.</div>';
+      return;
+    }
+
+    const groups = ensureGroupAssignments();
+    const assigned = new Set(groups.flat().filter(Boolean));
+
+    const table = document.createElement("table");
+    const thead = document.createElement("thead");
+    const trh = document.createElement("tr");
+    ["Group", "Slot", "Team"].forEach(label => {
+      const th = document.createElement("th");
+      th.textContent = label;
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    groups.forEach((group, groupIndex) => {
+      group.forEach((team, slotIndex) => {
+        const tr = document.createElement("tr");
+
+        const tdGroup = document.createElement("td");
+        tdGroup.textContent = "Group " + (groupIndex + 1);
+        tr.appendChild(tdGroup);
+
+        const tdSlot = document.createElement("td");
+        tdSlot.textContent = String(slotIndex + 1);
+        tr.appendChild(tdSlot);
+
+        const tdTeam = document.createElement("td");
+        const select = document.createElement("select");
+        select.style.marginBottom = "0";
+
+        const empty = document.createElement("option");
+        empty.value = "";
+        empty.textContent = "-- Select team --";
+        select.appendChild(empty);
+
+        teams.forEach(teamName => {
+          const option = document.createElement("option");
+          option.value = teamName;
+          const displayName = getTeamDisplayName(teamName);
+          option.textContent = displayName === teamName ? teamName : teamName + " - " + displayName;
+          option.disabled = assigned.has(teamName) && teamName !== team;
+          select.appendChild(option);
+        });
+
+        select.value = team || "";
+        select.addEventListener("change", () => {
+          tournament.groupAssignments = normalizeGroupAssignments(tournament.groupAssignments || []);
+          tournament.groupAssignments[groupIndex][slotIndex] = select.value;
+          saveTournamentAndRefresh();
+          renderGroupsAssignment();
+          updateGenerateScheduleBtn();
+        });
+
+        tdTeam.appendChild(select);
+        tr.appendChild(tdTeam);
+        tbody.appendChild(tr);
+      });
+    });
+
+    table.appendChild(tbody);
+    groupsAssignmentOutput.appendChild(table);
+
+    const hint = document.createElement("div");
+    hint.className = "hint";
+    hint.style.marginTop = "8px";
+    hint.textContent = hasCompleteGroupAssignments()
+      ? "Group assignment is complete. Generate Schedule will use these groups."
+      : "Select one team for every group slot before generating the schedule.";
+    groupsAssignmentOutput.appendChild(hint);
+  }
+
   function saveTournamentAndRefresh() {
     if (!tournament) return;
     upsertTournamentIndex(tournament);
@@ -2066,6 +2189,78 @@ const STORAGE_KEYS = {
       groups.push(picked.slice(g * teamsPerGroup, (g + 1) * teamsPerGroup));
     }
     return groups;
+  }
+
+  function getGroupConfig() {
+    const groupsCount = parseInt(groupsCountInput.value || tournament?.groupsCount || "0", 10);
+    const teamsPerGroup = parseInt(teamsPerGroupInput.value || tournament?.teamsPerGroup || "0", 10);
+    return { groupsCount, teamsPerGroup };
+  }
+
+  function normalizeGroupAssignments(assignments) {
+    const { groupsCount, teamsPerGroup } = getGroupConfig();
+    const teams = tournament?.teams || [];
+    const available = new Set(teams);
+    const used = new Set();
+    const normalized = [];
+
+    for (let g = 0; g < groupsCount; g++) {
+      const currentGroup = Array.isArray(assignments?.[g]) ? assignments[g] : [];
+      const group = [];
+      for (let slot = 0; slot < teamsPerGroup; slot++) {
+        const selected = currentGroup[slot] || "";
+        if (available.has(selected) && !used.has(selected)) {
+          group.push(selected);
+          used.add(selected);
+        } else {
+          group.push("");
+        }
+      }
+      normalized.push(group);
+    }
+
+    return normalized;
+  }
+
+  function autoFillGroupAssignments() {
+    if (!tournament) return [];
+    const { groupsCount, teamsPerGroup } = getGroupConfig();
+    const teams = tournament.teams || [];
+    const groups = [];
+    for (let g = 0; g < groupsCount; g++) {
+      const group = [];
+      for (let slot = 0; slot < teamsPerGroup; slot++) {
+        group.push(teams[(slot * groupsCount) + g] || "");
+      }
+      groups.push(group);
+    }
+    return groups;
+  }
+
+  function ensureGroupAssignments() {
+    if (!tournament || tournament.type !== "Groups") return [];
+    let groups = normalizeGroupAssignments(tournament.groupAssignments || []);
+    const assigned = groups.flat().filter(Boolean).length;
+    if (assigned === 0) {
+      groups = normalizeGroupAssignments(autoFillGroupAssignments());
+    }
+    tournament.groupAssignments = groups;
+    return groups;
+  }
+
+  function hasCompleteGroupAssignments() {
+    if (!tournament || tournament.type !== "Groups") return true;
+    const { groupsCount, teamsPerGroup } = getGroupConfig();
+    if (!Number.isFinite(groupsCount) || groupsCount < 1 || !Number.isFinite(teamsPerGroup) || teamsPerGroup < 2) return false;
+    const groups = normalizeGroupAssignments(tournament.groupAssignments || []);
+    if (groups.length !== groupsCount) return false;
+    return groups.every(group => group.length === teamsPerGroup && group.every(Boolean));
+  }
+
+  function getConfiguredGroups() {
+    const groups = ensureGroupAssignments();
+    if (!hasCompleteGroupAssignments()) return null;
+    return groups.map(group => [...group]);
   }
 
   function matchKey(match) {
@@ -2585,39 +2780,58 @@ function renderFinalSummary(finalMatch) {
   // Validation for enabling schedule
   // ----------------------------
   function updateGenerateScheduleBtn() {
+    const disableButton = (btn) => {
+      if (!btn) return;
+      btn.disabled = true;
+      btn.style.pointerEvents = "none";
+      btn.style.opacity = "0.6";
+    };
+    const setButtonState = (btn, enabled) => {
+      if (!btn) return;
+      btn.disabled = !enabled;
+      btn.style.pointerEvents = enabled ? "auto" : "none";
+      btn.style.opacity = enabled ? "1" : "0.6";
+    };
+
     if (!tournament) {
-      generateScheduleBtn.disabled = true;
-      if (teamsGenerateScheduleBtn) {
-        teamsGenerateScheduleBtn.disabled = true;
-        teamsGenerateScheduleBtn.style.pointerEvents = "none";
-        teamsGenerateScheduleBtn.style.opacity = "0.6";
-      }
-    updateBottomNavState();
+      disableButton(generateScheduleBtn);
+      disableButton(teamsGenerateScheduleBtn);
+      disableButton(groupsGenerateScheduleBtn);
+      disableButton(autoFillGroupsBtn);
+      updateBottomNavState();
       return;
     }
 
     const typeOk = !!tournamentTypeSelect.value;
     const fixtureOk = !!fixtureTypeSelect.value;
     const builtTeamsCount = (tournament.teams || []).length;
-    const requestedTeamsCount = parseInt(teamsCountInput.value || '0', 10);
+    const requestedTeamsCount = parseInt(teamsCountInput.value || "0", 10);
     const teamsOk = builtTeamsCount >= 2 && builtTeamsCount === requestedTeamsCount;
+    const groupsEnabled = tournamentTypeSelect.value === "Groups";
 
     let groupsOk = true;
-    if (tournamentTypeSelect.value === 'Groups') {
+    if (groupsEnabled) {
       const gc = parseInt(groupsCountInput.value, 10);
       const tpg = parseInt(teamsPerGroupInput.value, 10);
-      groupsOk = Number.isFinite(gc) && gc >= 1 && Number.isFinite(tpg) && tpg >= 2 && (gc * tpg) <= (tournament.teams || []).length;
+      groupsOk = Number.isFinite(gc)
+        && gc >= 1
+        && Number.isFinite(tpg)
+        && tpg >= 2
+        && (gc * tpg) <= builtTeamsCount
+        && hasCompleteGroupAssignments();
     }
 
-    generateScheduleBtn.disabled = !(typeOk && fixtureOk && teamsOk && groupsOk);
-    generateScheduleBtn.style.pointerEvents = generateScheduleBtn.disabled ? "none" : "auto";
-    generateScheduleBtn.style.opacity = generateScheduleBtn.disabled ? "0.6" : "1";
-    if (teamsGenerateScheduleBtn) {
-      teamsGenerateScheduleBtn.disabled = generateScheduleBtn.disabled;
-      teamsGenerateScheduleBtn.style.pointerEvents = teamsGenerateScheduleBtn.disabled ? "none" : "auto";
-      teamsGenerateScheduleBtn.style.opacity = teamsGenerateScheduleBtn.disabled ? "0.6" : "1";
-    }
-  updateBottomNavState();
+    const canGenerate = typeOk && fixtureOk && teamsOk && groupsOk;
+    const canOpenGroupAssignment = typeOk && fixtureOk && teamsOk;
+    setButtonState(generateScheduleBtn, groupsEnabled ? canOpenGroupAssignment : canGenerate);
+    setButtonState(teamsGenerateScheduleBtn, groupsEnabled ? canOpenGroupAssignment : canGenerate);
+    setButtonState(groupsGenerateScheduleBtn, canGenerate);
+    setButtonState(autoFillGroupsBtn, groupsEnabled && teamsOk);
+    const primaryGenerateLabel = groupsEnabled && teamsOk && !groupsOk ? 'Assign Groups' : 'Generate Schedule';
+    generateScheduleBtn.textContent = primaryGenerateLabel;
+    if (teamsGenerateScheduleBtn) teamsGenerateScheduleBtn.textContent = primaryGenerateLabel;
+    if (groupsGenerateScheduleBtn) groupsGenerateScheduleBtn.textContent = 'Generate Schedule';
+    updateBottomNavState();
   }
 
   // ----------------------------
@@ -2677,6 +2891,7 @@ function renderFinalSummary(finalMatch) {
     clearOutputs();
     renderPlayersList();
     renderTeamsPreview();
+    renderGroupsAssignment();
     updateGenerateScheduleBtn();
     savePlayerListBtn.disabled = (tournament.players || []).length === 0;
     updateBuildTeamsBtn();
@@ -2747,6 +2962,7 @@ function renderFinalSummary(finalMatch) {
     clearOutputs();
     renderPlayersList();
     renderTeamsPreview();
+    renderGroupsAssignment();
     updateGenerateScheduleBtn();
     updateBuildTeamsBtn();
     refreshHomeDropdowns();
@@ -2770,13 +2986,21 @@ function renderFinalSummary(finalMatch) {
     if (!tournament) return;
     tournament.type = tournamentTypeSelect.value;
     groupsConfig.classList.toggle('hidden', tournament.type !== 'Groups');
+    if (tournament.type === 'Groups') {
+      tournament.groupAssignments = normalizeGroupAssignments(tournament.groupAssignments || []);
+    }
     saveTournamentAndRefresh();
+    renderGroupsAssignment();
     updateGenerateScheduleBtn();
   });
 
   groupsCountInput.addEventListener('input', () => {
     if (!tournament) return;
     tournament.groupsCount = parseInt(groupsCountInput.value || '0', 10);
+    if (tournament.type === 'Groups') {
+      tournament.groupAssignments = normalizeGroupAssignments(tournament.groupAssignments || []);
+      renderGroupsAssignment();
+    }
     saveTournamentAndRefresh();
     updateGenerateScheduleBtn();
   });
@@ -2784,6 +3008,10 @@ function renderFinalSummary(finalMatch) {
   teamsPerGroupInput.addEventListener('input', () => {
     if (!tournament) return;
     tournament.teamsPerGroup = parseInt(teamsPerGroupInput.value || '0', 10);
+    if (tournament.type === 'Groups') {
+      tournament.groupAssignments = normalizeGroupAssignments(tournament.groupAssignments || []);
+      renderGroupsAssignment();
+    }
     saveTournamentAndRefresh();
     updateGenerateScheduleBtn();
   });
@@ -2951,9 +3179,13 @@ function renderFinalSummary(finalMatch) {
 
     tournament.teams = teams;
     tournament.teamPlayers = teamPlayers;
+    if (tournament.type === 'Groups') {
+      tournament.groupAssignments = normalizeGroupAssignments(tournament.groupAssignments || []);
+    }
 
     saveTournamentAndRefresh();
     renderTeamsPreview();
+    renderGroupsAssignment();
     updateGenerateScheduleBtn();
   });
   }
@@ -2973,9 +3205,14 @@ function renderFinalSummary(finalMatch) {
     if (tournament.type === 'League') {
       nextMatches = buildLeagueMatches(tournament.teams, tournament.fixtureType);
     } else if (tournament.type === 'Groups') {
-      const gc = parseInt(groupsCountInput.value, 10);
-      const tpg = parseInt(teamsPerGroupInput.value, 10);
-      nextGroupAssignments = partitionIntoGroups(tournament.teams, gc, tpg);
+      if (!hasCompleteGroupAssignments()) {
+        renderGroupsAssignment();
+        alert('Please review and complete group assignments first.');
+        setView('groups');
+        return;
+      }
+      const configuredGroups = getConfiguredGroups();
+      nextGroupAssignments = configuredGroups;
       nextMatches = buildGroupMatches(nextGroupAssignments, tournament.fixtureType);
     } else {
       alert('Select tournament type.');
@@ -3005,6 +3242,18 @@ function renderFinalSummary(finalMatch) {
   generateScheduleBtn.addEventListener('click', generateScheduleFromCurrentTournament);
   if (teamsGenerateScheduleBtn) {
     teamsGenerateScheduleBtn.addEventListener('click', generateScheduleFromCurrentTournament);
+  }
+  if (groupsGenerateScheduleBtn) {
+    groupsGenerateScheduleBtn.addEventListener('click', generateScheduleFromCurrentTournament);
+  }
+  if (autoFillGroupsBtn) {
+    autoFillGroupsBtn.addEventListener('click', () => {
+      if (!tournament) return;
+      tournament.groupAssignments = normalizeGroupAssignments(autoFillGroupAssignments());
+      saveTournamentAndRefresh();
+      renderGroupsAssignment();
+      updateGenerateScheduleBtn();
+    });
   }
 
   function renderKnockoutBracket(knockout, playoffFormat) {
