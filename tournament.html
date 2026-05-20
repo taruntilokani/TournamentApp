@@ -1,0 +1,2855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Mobile-first viewport for Android phones -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <title>Badminton Tournament Manager</title>
+  <style>
+    /*
+      Awesome modern theme
+      - Glassmorphism card surfaces
+      - Soft gradient background
+      - Slightly larger, friendlier typography
+    */
+    :root {
+      --primary: #6366f1;      /* indigo */
+      --primary-soft: rgba(99, 102, 241, 0.12);
+      --bg: radial-gradient(circle at top left, #111827 0%, #020617 55%, #020617 100%);
+      --card: rgba(15, 23, 42, 0.85);
+      --border: rgba(148, 163, 184, 0.4);
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #22c55e;       /* green for status*/
+      --danger: #f97373;
+      --shadow-soft: 0 18px 45px rgba(15,23,42,0.65);
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html {
+      width: 100%;
+      min-height: 100%;
+      overflow-x: hidden;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: clamp(10px, 3vw, 18px) clamp(6px, 2.5vw, 14px) 28px;
+      min-height: 100vh;
+      width: 100%;
+      max-width: 100vw;
+      overflow-x: hidden;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      -webkit-tap-highlight-color: transparent; /* better feel on Android */
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 8px;
+      letter-spacing: 0.03em;
+      font-size: clamp(19px, 5vw, 28px);
+      line-height: 1.25;
+      padding: 0 8px;
+    }
+    .subTitle {
+      text-align: center;
+      color: var(--muted);
+      margin-bottom: 16px;
+      font-size: 13px;
+      padding: 0 8px;
+    }
+    .section {
+      background: var(--card);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      padding: clamp(12px, 3vw, 18px);
+      margin-bottom: 16px;
+      border-radius: 18px;
+      box-shadow: var(--shadow-soft);
+      width: min(100%, 760px);
+      max-width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+    .featureView.hidden {
+      display: none !important;
+    }
+    .featureView:not(.hidden) {
+      display: block;
+    }
+    .primaryNav {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    .primaryNav button {
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .primaryNav button.active {
+      background: linear-gradient(135deg, var(--primary), #4f46e5);
+      color: #fff;
+      border-color: rgba(79, 70, 229, 0.7);
+      box-shadow: 0 14px 26px rgba(79, 70, 229, 0.35);
+    }
+    .primaryNav button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at top right, rgba(129, 140, 248, 0.28), transparent 55%);
+      opacity: 0.9;
+    }
+    .section > * {
+      position: relative;
+      z-index: 1;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      width: 100%;
+    }
+    .col {
+      flex: 1;
+      min-width: min(240px, 100%);
+    }
+    label {
+      display: block;
+      margin: 8px 0 4px;
+      font-weight: 500;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    input[type=text], input[type=number], select, textarea {
+      width: 100%;
+      max-width: 100%;
+      padding: 10px 11px;
+      margin-bottom: 8px;
+      border-radius: 9px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+      font-size: 16px; /* prevents unwanted Android/iOS zoom and stays readable */
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+    input[type=text]::placeholder,
+    input[type=number]::placeholder,
+    textarea::placeholder {
+      color: rgba(148, 163, 184, 0.7);
+    }
+    input[type=text]:focus,
+    input[type=number]:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.4);
+      background: rgba(15, 23, 42, 0.98);
+    }
+    button {
+      background: linear-gradient(135deg, var(--primary), #4f46e5);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 14px 30px rgba(79, 70, 229, 0.45);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease, background 0.12s ease;
+    }
+    button.secondary {
+      background: linear-gradient(135deg, #0f172a, #020617);
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.7);
+    }
+    button.danger {
+      background: linear-gradient(135deg, #f97373, #dc2626);
+      box-shadow: 0 12px 26px rgba(248, 113, 113, 0.6);
+    }
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 32px rgba(79, 70, 229, 0.6);
+      opacity: 0.96;
+    }
+    button:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 10px 22px rgba(79, 70, 229, 0.55);
+    }
+    button:disabled {
+      background: rgba(148, 163, 184, 0.4);
+      box-shadow: none;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+    table {
+      width: 100%;
+      max-width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: clamp(11px, 2.8vw, 12px);
+      border-radius: 12px;
+      overflow: hidden;
+      backdrop-filter: blur(16px);
+    }
+    th, td {
+      border: 1px solid rgba(55, 65, 81, 0.8);
+      padding: 8px 6px;
+      text-align: center;
+      background: rgba(15, 23, 42, 0.9);
+    }
+    th {
+      background: linear-gradient(135deg, rgba(79, 70, 229, 0.94), rgba(56, 189, 248, 0.9));
+      color: white;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 10px;
+    }
+    .hidden { display: none; }
+
+    /* ------------------------
+       Mobile-first top tabs
+       ------------------------ */
+    .bottomNav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+      width: min(100%, 760px);
+      max-width: 100%;
+      margin: 0 auto 18px;
+      padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+      background: rgba(2, 6, 23, 0.92);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.55);
+    }
+    @media (min-width: 720px) {
+      .bottomNav {
+        max-width: 760px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+    }
+    .bottomNav button {
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      color: var(--muted);
+      padding: 10px 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: none;
+      letter-spacing: 0.01em;
+      text-transform: none;
+      width: 100%;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bottomNav button.active {
+      background: linear-gradient(135deg, var(--primary), #4f46e5);
+      color: #fff;
+      border-color: rgba(79, 70, 229, 0.7);
+    }
+    .bottomNav button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    /* Tabs are now placed at the top, so no fixed-bottom spacing is needed */
+    body {
+      padding-bottom: 28px;
+    }
+    .pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 11px;
+      border: 1px solid #c7d2fe;
+    }
+
+    /* Tabs */
+    .tab {
+      overflow: hidden;
+      border-bottom: 1px solid #ccc;
+      background-color: #f1f1f1;
+      border-radius: 8px 8px 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 4px;
+    }
+    .tab button {
+      background-color: inherit;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      padding: 9px 10px;
+      transition: 0.2s;
+      font-size: 13px;
+      border-radius: 7px;
+      color: #111827;
+    }
+    .tab button:hover { background-color: #e5e7eb; }
+    .tab button.active {
+      background-color: white;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .tabcontent { padding-top: 10px; }
+    .hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: -6px;
+      margin-bottom: 10px;
+    }
+
+    .list {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      background: rgba(15, 23, 42, 0.85);
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.8);
+    }
+    .listItem {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      min-height: 42px;
+    }
+    .listItem:last-child { border-bottom: none; }
+    .listItem input { margin-bottom: 0; }
+    .playerNameText {
+      flex: 1;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 0 42px;
+      word-break: break-word;
+    }
+    .removeIconBtn {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 30px;
+      height: 30px;
+      min-width: 30px;
+      padding: 0;
+      border-radius: 999px;
+      font-size: 20px;
+      line-height: 1;
+      font-weight: 700;
+      box-shadow: 0 8px 18px rgba(248, 113, 113, 0.35);
+    }
+    .smallBtn {
+      padding: 6px 9px;
+      font-size: 11px;
+      border-radius: 999px;
+    }
+
+
+    /* Home tabs */
+    .hometab {
+      overflow: hidden;
+      border-bottom: 1px solid rgba(55, 65, 81, 0.8);
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 999px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 4px;
+      margin-top: 10px;
+    }
+    .hometab button {
+      background-color: transparent;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      padding: 7px 14px;
+      transition: 0.15s;
+      font-size: 13px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .hometab button:hover { background-color: rgba(148, 163, 184, 0.15); }
+    .hometab button.active {
+      background: linear-gradient(135deg, rgba(79, 70, 229, 0.95), rgba(56, 189, 248, 0.9));
+      color: white;
+      box-shadow: 0 8px 18px rgba(56, 189, 248, 0.4);
+    }
+    .hometabcontent { padding-top: 10px; }
+
+    .knockoutMatches {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: minmax(0, 1fr);
+    }
+    @media (min-width: 720px) {
+      .knockoutMatches {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    .knockoutCard {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(15, 23, 42, 0.9);
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .knockoutHeader {
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .knockoutTeamRow {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .knockoutTeamRow span {
+      flex: 1;
+      font-size: 14px;
+    }
+    .knockoutTeamRow input[type=number] {
+      width: 70px;
+      margin-bottom: 0;
+    }
+    .knockoutFooter {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ------------------------
+       Mobile optimizations
+       ------------------------ */
+    @media (max-width: 600px) {
+      body {
+        padding: 10px 6px 20px;
+      }
+
+      .section {
+        padding: 12px 10px 12px;
+        border-radius: 14px;
+        width: 100%;
+      }
+
+      h3 {
+        font-size: 18px;
+      }
+
+      .row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .col {
+        min-width: 100%;
+      }
+
+      button {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .row > button,
+      .row > .col > button,
+      .row > div > button {
+        width: 100%;
+        margin-top: 4px;
+      }
+
+      table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      th, td {
+        white-space: nowrap;
+        padding: 7px 6px;
+      }
+
+      .bottomNav {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 5px;
+        padding-left: 6px;
+        padding-right: 6px;
+        margin-bottom: 14px;
+        border-radius: 14px;
+      }
+
+      .bottomNav button {
+        font-size: 11px;
+        padding: 9px 4px;
+      }
+
+      input[type=number] {
+        width: 100% !important;
+      }
+
+      .hometab,
+      .tab {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .bottomNav button {
+        font-size: 10px;
+        padding-left: 2px;
+        padding-right: 2px;
+      }
+
+      th, td {
+        padding: 6px 5px;
+      }
+    }
+  </style>
+</head>
+<body>
+<script>
+  // Container mode persistence:
+  // Hydrates this single-file app from the backend database, then mirrors all
+  // app localStorage changes back to the API. The existing app can stay simple
+  // and synchronous while the container stack keeps data durable in Postgres.
+  (function bootstrapServerBackedStorage() {
+    const APP_KEY_PREFIX = 'bt_';
+    const apiBase = '/api/app_storage';
+    const nativeSetItem = Storage.prototype.setItem;
+    const nativeRemoveItem = Storage.prototype.removeItem;
+
+    function isAppKey(key) {
+      return typeof key === 'string' && key.startsWith(APP_KEY_PREFIX);
+    }
+
+    function sendJson(url, options) {
+      return fetch(url, {
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        ...options,
+      }).catch((error) => {
+        console.warn('Database sync failed:', error);
+      });
+    }
+
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', apiBase, false);
+      xhr.send(null);
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const payload = JSON.parse(xhr.responseText || '[]');
+        const rows = Array.isArray(payload) ? payload : [];
+        rows.forEach((row) => {
+          if (isAppKey(row.key)) nativeSetItem.call(localStorage, row.key, row.value);
+        });
+      }
+    } catch (error) {
+      console.warn('Could not hydrate from database. Using browser cache only.', error);
+    }
+
+    Storage.prototype.setItem = function patchedSetItem(key, value) {
+      nativeSetItem.call(this, key, value);
+      if (this === localStorage && isAppKey(key)) {
+        sendJson(apiBase, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Prefer: 'resolution=merge-duplicates,return=minimal',
+          },
+          body: JSON.stringify({ key, value: String(value) }),
+        });
+      }
+    };
+
+    Storage.prototype.removeItem = function patchedRemoveItem(key) {
+      nativeRemoveItem.call(this, key);
+      if (this === localStorage && isAppKey(key)) {
+        sendJson(`${apiBase}?key=eq.${encodeURIComponent(key)}`, { method: 'DELETE' });
+      }
+    };
+
+    // If someone has existing browser-only data and the database is new, seed it.
+    window.addEventListener('load', () => {
+      Object.keys(localStorage)
+        .filter(isAppKey)
+        .forEach((key) => {
+          sendJson(apiBase, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Prefer: 'resolution=merge-duplicates,return=minimal',
+            },
+            body: JSON.stringify({ key, value: localStorage.getItem(key) || '' }),
+          });
+        });
+    });
+  })();
+</script>
+
+<h2>Welcome to Badminton Tournament</h2>
+<div class="subTitle">Manage tournaments, players, schedules, and leaderboards in one place.</div>
+
+<!-- Top tab bar (centered feature navigation) -->
+<div class="bottomNav" id="bottomNav" role="tablist" aria-label="Tournament features">
+  <button id="tabTournament" class="bottomNavBtn active" data-view="tournament" role="tab" aria-controls="viewTournament" aria-selected="true">Tournament</button>
+  <button id="tabPlayers" class="bottomNavBtn" data-view="players" role="tab" aria-controls="viewPlayers" aria-selected="false">Players</button>
+  <button id="tabTeams" class="bottomNavBtn" data-view="teams" role="tab" aria-controls="viewTeams" aria-selected="false" disabled>Teams</button>
+  <button id="tabSchedule" class="bottomNavBtn" data-view="schedule" role="tab" aria-controls="viewSchedule" aria-selected="false" disabled>Schedule</button>
+  <button id="tabPoints" class="bottomNavBtn" data-view="points" role="tab" aria-controls="viewPoints" aria-selected="false" disabled>Points</button>
+  <button id="tabPlayoff" class="bottomNavBtn" data-view="playoff" role="tab" aria-controls="viewPlayoff" aria-selected="false" disabled>Playoff</button>
+  <button id="tabFinal" class="bottomNavBtn" data-view="final" role="tab" aria-controls="viewFinal" aria-selected="false" disabled>Final</button>
+  <button id="tabLeaderboard" class="bottomNavBtn" data-view="leaderboard" role="tab" aria-controls="viewLeaderboard" aria-selected="false">Leaderboard</button>
+</div>
+
+<!-- Unified, feature-based screens (one feature per tab) -->
+
+<!-- Tournament tab (create/load + tournament config) -->
+<div class="section featureView" id="viewTournament" role="tabpanel" aria-labelledby="tabTournament">
+  <h3 style="margin-top:0">Tournament</h3>
+  <div class="hint">Create or load a tournament, then configure format and generate the schedule.</div>
+
+  <div class="row">
+    <div class="col" id="createTournamentPanel">
+      <h4 style="margin:0 0 6px">Create</h4>
+      <label for="newTournamentName">Tournament Name</label>
+      <input id="newTournamentName" type="text" placeholder="e.g., Summer Smash 2026" />
+      <button id="createTournamentBtn" disabled>Create Tournament</button>
+    </div>
+    <div class="col" id="loadTournamentPanel">
+      <h4 style="margin:0 0 6px">Load</h4>
+      <label for="loadTournamentSelect">Saved Tournaments</label>
+      <select id="loadTournamentSelect">
+        <option value="">-- Select --</option>
+      </select>
+      <div class="row">
+        <button id="loadTournamentBtn" disabled>Load</button>
+        <button id="deleteTournamentBtn" class="danger" disabled>Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tournamentSetupPanel" class="hidden">
+  <div class="row" style="justify-content: space-between; margin-top: 10px;">
+    <div>
+      <div><b>Current Tournament:</b> <span id="currentTournamentName">-</span></div>
+    </div>
+    <div class="row">
+      <button id="closeTournamentBtn" class="secondary">Close Tournament</button>
+      <button id="resetTournamentBtn" class="danger" disabled>Reset Data</button>
+    </div>
+  </div>
+
+  <label for="tournamentType">Tournament Type</label>
+  <select id="tournamentType" disabled>
+    <option value="">-- Select --</option>
+    <option value="League">League</option>
+    <option value="Groups">Groups</option>
+  </select>
+
+  <div id="groupsConfig" class="hidden">
+    <div class="row">
+      <div class="col">
+        <label for="groupsCount">No. of Groups</label>
+        <input id="groupsCount" type="number" min="1" placeholder="e.g., 2" disabled />
+      </div>
+      <div class="col">
+        <label for="teamsPerGroup">Teams per Group</label>
+        <input id="teamsPerGroup" type="number" min="2" placeholder="e.g., 4" disabled />
+      </div>
+    </div>
+  </div>
+
+  <label for="fixtureType">Fixture Options</label>
+  <select id="fixtureType" disabled>
+    <option value="">-- Select --</option>
+    <option value="Single">Single Matches (each pair plays once)</option>
+    <option value="HomeAway">Home & Away Matches (each pair plays twice)</option>
+  </select>
+
+  <label for="playoffFormat">Playoff Format</label>
+  <select id="playoffFormat" disabled>
+    <option value="Semifinals">Semifinals</option>
+    <option value="Qualifiers">Qualifiers</option>
+    <option value="Final">Final (top 2 direct)</option>
+  </select>
+
+  <div class="row" style="justify-content: space-between; margin-top: 10px;">
+    <button id="generateScheduleBtn" disabled>Generate Schedule</button>
+  </div>
+  </div>
+</div>
+
+<!-- Players tab -->
+<div class="section featureView hidden" id="viewPlayers" role="tabpanel" aria-labelledby="tabPlayers">
+  <h3 style="margin-top:0">Players</h3>
+  <div class="hint">Manage player lists. When a tournament is loaded, player lists can be applied to that tournament.</div>
+
+  <div class="row">
+    <div class="col">
+      <label for="playerListSelect">Load Player List</label>
+      <select id="playerListSelect">
+        <option value="">-- Select --</option>
+      </select>
+    </div>
+    <div class="col">
+      <label>&nbsp;</label>
+      <div class="row">
+        <button id="loadPlayerListBtn" disabled class="secondary">Load Players</button>
+        <button id="savePlayerListBtn" disabled>Save Player List</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <label for="newPlayerName">Add Player</label>
+      <input id="newPlayerName" type="text" placeholder="Player name" />
+    </div>
+    <div style="padding-top:30px">
+      <button id="addPlayerBtn" disabled>Add</button>
+    </div>
+  </div>
+
+  <label for="bulkPlayersInput">Add Many Players (one per line or comma-separated)</label>
+  <textarea id="bulkPlayersInput" rows="4" style="width:100%; padding:8px; border-radius:6px; border:1px solid rgba(148, 163, 184, 0.7); background: rgba(15, 23, 42, 0.9); color: var(--text);" placeholder="e.g.\nAlice\nBob\nCharlie\n\nor: Alice, Bob, Charlie"></textarea>
+  <div class="row" style="justify-content: flex-end;">
+    <button id="bulkAddPlayersBtn" class="secondary" disabled>Add Many</button>
+  </div>
+
+  <div class="list" id="playersList"></div>
+</div>
+
+<!-- Teams tab -->
+<div class="section featureView hidden" id="viewTeams" role="tabpanel" aria-labelledby="tabTeams">
+  <h3 style="margin-top:0">Teams</h3>
+  <div class="hint">Pick match type and number of teams, then assign players to teams.</div>
+
+  <div class="row">
+    <div class="col">
+      <label for="matchType">Match Type</label>
+      <select id="matchType" disabled>
+        <option value="">-- Select --</option>
+        <option value="Singles">Singles (1 player per team)</option>
+        <option value="Doubles">Doubles (2 players per team)</option>
+      </select>
+    </div>
+    <div class="col">
+      <label for="teamsCount">No. of Teams</label>
+      <input id="teamsCount" type="number" min="2" placeholder="e.g., 4" disabled />
+    </div>
+  </div>
+
+  <div style="margin-top:10px" id="teamsPreview"></div>
+  <div class="row" style="justify-content: flex-end; margin-top: 8px;">
+    <button id="buildTeamsBtn" class="secondary" disabled>Build Teams</button>
+    <button id="teamsGenerateScheduleBtn" disabled>Generate Schedule</button>
+  </div>
+</div>
+
+<!-- Schedule tab -->
+<div class="section featureView hidden" id="viewSchedule" role="tabpanel" aria-labelledby="tabSchedule">
+  <h3 style="margin-top:0">Schedule</h3>
+  <div class="hint">Enter scores. Points Table will auto-calculate.</div>
+  <div id="scheduleOutput"></div>
+</div>
+
+<!-- Points Table tab -->
+<div class="section featureView hidden" id="viewPoints" role="tabpanel" aria-labelledby="tabPoints">
+  <h3 style="margin-top:0">Points Table (Standings)</h3>
+  <div id="pointsTableOutput"></div>
+</div>
+
+<!-- Playoff tab -->
+<div class="section featureView hidden" id="viewPlayoff" role="tabpanel" aria-labelledby="tabPlayoff">
+  <h3 style="margin-top:0">Playoff Bracket</h3>
+  <div class="hint">Seeds fill automatically from standings. Update scores to advance teams.</div>
+  <div id="playoffBracketOutput"></div>
+</div>
+
+<!-- Final tab -->
+<div class="section featureView hidden" id="viewFinal" role="tabpanel" aria-labelledby="tabFinal">
+  <h3 style="margin-top:0">Championship Match</h3>
+  <div id="finalMatchOutput"></div>
+</div>
+
+<!-- Leaderboard tab -->
+<div class="section featureView hidden" id="viewLeaderboard" role="tabpanel" aria-labelledby="tabLeaderboard">
+  <h3 style="margin-top:0">Global Final Leaderboard</h3>
+  <div class="hint">Player-based global leaderboard on this browser. Sorted by: Total Points → Titles → Runner-up → Games Played → Days Played.</div>
+  <div id="finalLeaderboardOutput"></div>
+</div>
+
+<script>
+  // ----------------------------
+  // Storage keys
+  // ----------------------------
+const STORAGE_KEYS = {
+  tournamentsIndex: 'bt_tournaments_index_v1',
+  tournamentPrefix: 'bt_tournament_v1_',
+  playerListsIndex: 'bt_playerlists_index_v1',
+  playerListPrefix: 'bt_playerlist_v1_',
+  globalLeaderboard: 'bt_global_leaderboard_v1',
+  homePlayersDraft: 'bt_home_players_draft_v1',
+  activeTournamentId: 'bt_active_tournament_id_v1',
+  activeView: 'bt_active_view_v1',
+};
+
+  // ----------------------------
+  // DOM
+  // ----------------------------
+  // Views (one feature per tab)
+  const viewTournament = document.getElementById('viewTournament');
+  const viewPlayers = document.getElementById('viewPlayers');
+  const viewTeams = document.getElementById('viewTeams');
+  const viewSchedule = document.getElementById('viewSchedule');
+  const viewPoints = document.getElementById('viewPoints');
+  const viewPlayoff = document.getElementById('viewPlayoff');
+  const viewFinal = document.getElementById('viewFinal');
+  const viewLeaderboard = document.getElementById('viewLeaderboard');
+  const bottomNav = document.getElementById('bottomNav');
+
+  const newTournamentNameInput = document.getElementById('newTournamentName');
+  const createTournamentPanel = document.getElementById('createTournamentPanel');
+  const createTournamentBtn = document.getElementById('createTournamentBtn');
+  const loadTournamentPanel = document.getElementById('loadTournamentPanel');
+  const loadTournamentSelect = document.getElementById('loadTournamentSelect');
+  const loadTournamentBtn = document.getElementById('loadTournamentBtn');
+  const deleteTournamentBtn = document.getElementById('deleteTournamentBtn');
+
+  const bottomNavButtons = () => document.querySelectorAll('.bottomNavBtn');
+
+  const currentTournamentNameEl = document.getElementById('currentTournamentName');
+  const tournamentSetupPanel = document.getElementById('tournamentSetupPanel');
+  const closeTournamentBtn = document.getElementById('closeTournamentBtn');
+  const resetTournamentBtn = document.getElementById('resetTournamentBtn');
+
+  const tournamentTypeSelect = document.getElementById('tournamentType');
+  const groupsConfig = document.getElementById('groupsConfig');
+  const groupsCountInput = document.getElementById('groupsCount');
+  const teamsPerGroupInput = document.getElementById('teamsPerGroup');
+  const fixtureTypeSelect = document.getElementById('fixtureType');
+  const playoffFormatSelect = document.getElementById('playoffFormat');
+
+  // Players + teams generation
+  const matchTypeSelect = document.getElementById('matchType');
+  const teamsCountInput = document.getElementById('teamsCount');
+  const playerListSelect = document.getElementById('playerListSelect');
+  const loadPlayerListBtn = document.getElementById('loadPlayerListBtn');
+  const savePlayerListBtn = document.getElementById('savePlayerListBtn');
+  const newPlayerNameInput = document.getElementById('newPlayerName');
+  const addPlayerBtn = document.getElementById('addPlayerBtn');
+  const bulkPlayersInput = document.getElementById('bulkPlayersInput');
+  const bulkAddPlayersBtn = document.getElementById('bulkAddPlayersBtn');
+  const playersListDiv = document.getElementById('playersList');
+  const buildTeamsBtn = document.getElementById('buildTeamsBtn');
+  const teamsGenerateScheduleBtn = document.getElementById('teamsGenerateScheduleBtn');
+  const teamsPreviewDiv = document.getElementById('teamsPreview');
+
+  const generateScheduleBtn = document.getElementById('generateScheduleBtn');
+
+  const scheduleOutput = document.getElementById('scheduleOutput');
+  const playoffBracketOutput = document.getElementById('playoffBracketOutput');
+  const finalMatchOutput = document.getElementById('finalMatchOutput');
+  const pointsTableOutput = document.getElementById('pointsTableOutput');
+  const finalLeaderboardOutput = document.getElementById('finalLeaderboardOutput');
+
+  // active view
+  let currentView = 'tournament';
+
+  // ----------------------------
+  // State
+  // ----------------------------
+  /** @type {{
+    id:string,
+    name:string,
+    type:'League'|'Groups'|'',
+    fixtureType:'Single'|'HomeAway'|'',
+    matchType:'Singles'|'Doubles'|'',
+    teamsCount:number,
+    groupsCount:number,
+    teamsPerGroup:number,
+    players:string[],
+    teams:string[],
+    teamPlayers:Record<string,string[]>,
+    matches:any[],
+    knockout:any,
+    finalResult:any|null
+  } | null} */
+  let tournament = null;
+  let tournamentEntryMode = null; // 'create' | 'load' | null
+
+  function updateTournamentHomePanels() {
+    const hasTournament = !!tournament;
+    const hideCreate = hasTournament && tournamentEntryMode === 'load';
+    const hideLoad = hasTournament && tournamentEntryMode === 'create';
+
+    if (createTournamentPanel) {
+      createTournamentPanel.classList.toggle('hidden', hideCreate);
+      createTournamentPanel.hidden = hideCreate;
+    }
+    if (loadTournamentPanel) {
+      loadTournamentPanel.classList.toggle('hidden', hideLoad);
+      loadTournamentPanel.hidden = hideLoad;
+    }
+  }
+
+  function hideAllViews() {
+    [
+      viewTournament,
+      viewPlayers,
+      viewTeams,
+      viewSchedule,
+      viewPoints,
+      viewPlayoff,
+      viewFinal,
+      viewLeaderboard,
+    ].forEach(v => {
+      if (!v) return;
+      v.classList.add('hidden');
+      v.hidden = true;
+      v.setAttribute('aria-hidden', 'true');
+    });
+  }
+
+  function updateBottomNavState() {
+    const hasTournament = !!tournament;
+    const hasSchedule = hasTournament && Array.isArray(tournament?.matches) && tournament.matches.length > 0;
+
+    if (tournamentSetupPanel) {
+      tournamentSetupPanel.classList.toggle('hidden', !hasTournament);
+      tournamentSetupPanel.hidden = !hasTournament;
+    }
+    updateTournamentHomePanels();
+
+    // Enable/disable form controls based on tournament availability
+    tournamentTypeSelect.disabled = !hasTournament;
+    fixtureTypeSelect.disabled = !hasTournament;
+    playoffFormatSelect.disabled = !hasTournament;
+    matchTypeSelect.disabled = !hasTournament;
+    teamsCountInput.disabled = !hasTournament;
+    resetTournamentBtn.disabled = !hasTournament;
+
+    // groups inputs depend on tournament + type
+    const groupsEnabled = hasTournament && tournamentTypeSelect.value === 'Groups';
+    groupsCountInput.disabled = !groupsEnabled;
+    teamsPerGroupInput.disabled = !groupsEnabled;
+
+    bottomNavButtons().forEach(btn => {
+      const v = btn.dataset.view;
+      if (v === 'tournament' || v === 'players' || v === 'leaderboard') {
+        btn.disabled = false;
+      } else if (v === 'teams') {
+        btn.disabled = !hasTournament;
+      } else {
+        // schedule/points/playoff/final
+        btn.disabled = !hasSchedule;
+      }
+
+      if (v === currentView) btn.classList.add('active');
+      else btn.classList.remove('active');
+      btn.setAttribute('aria-selected', v === currentView ? 'true' : 'false');
+      btn.setAttribute('tabindex', v === currentView ? '0' : '-1');
+    });
+  }
+
+  function setView(view) {
+    // Guard against disabled navigation
+    const btn = document.querySelector(`.bottomNavBtn[data-view="${view}"]`);
+    if (btn && btn.disabled) return;
+
+    currentView = view;
+    localStorage.setItem(STORAGE_KEYS.activeView, view);
+    hideAllViews();
+    const map = {
+      tournament: viewTournament,
+      players: viewPlayers,
+      teams: viewTeams,
+      schedule: viewSchedule,
+      points: viewPoints,
+      playoff: viewPlayoff,
+      final: viewFinal,
+      leaderboard: viewLeaderboard,
+    };
+    const el = map[view] || viewTournament;
+    if (el) {
+      el.classList.remove('hidden');
+      el.hidden = false;
+      el.setAttribute('aria-hidden', 'false');
+    }
+
+    // Keep views fresh
+    if (view === 'players') {
+      refreshHomeDropdowns();
+      renderPlayersList();
+      updateSavePlayerListBtnState();
+    }
+    if (view === 'leaderboard') {
+      renderGlobalLeaderboard(computeGlobalLeaderboardRows());
+    }
+    if (view === 'teams') {
+      renderTeamsPreview();
+      updateBuildTeamsBtn();
+    }
+    if (view === 'schedule') {
+      renderSchedule(tournament?.matches || []);
+    }
+    if (view === 'points' || view === 'playoff' || view === 'final') {
+      recalcAndRender();
+    }
+
+    updateBottomNavState();
+    // Do not auto-scroll here. Keeping scroll/focus stable prevents input entry
+    // from feeling like it jumped to another section on mobile browsers.
+  }
+
+  // ----------------------------
+  // Utilities
+  // ----------------------------
+  function uid() {
+    return Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+
+  function normalizeTeamName(name) {
+    return (name || '').trim();
+  }
+
+  function normalizePlayerName(name) {
+    return (name || '').trim();
+  }
+
+  function splitPlayerNames(text) {
+    // Supports newline-separated or comma-separated input.
+    return (text || '')
+      .split(/[\n,]+/g)
+      .map(s => normalizePlayerName(s))
+      .filter(Boolean);
+  }
+
+  function lower(name) {
+    return name.trim().toLowerCase();
+  }
+
+  function validatePlayersUniquenessForList(list) {
+    const set = new Set();
+    for (const p of (list || [])) {
+      const n = lower(normalizePlayerName(p));
+      if (!n) return false;
+      if (set.has(n)) return false;
+      set.add(n);
+    }
+    return true;
+  }
+
+  function safeJsonParse(str, fallback) {
+    try { return JSON.parse(str); } catch { return fallback; }
+  }
+
+  function getHomePlayersDraft() {
+    return safeJsonParse(localStorage.getItem(STORAGE_KEYS.homePlayersDraft) || '[]', []);
+  }
+
+  function setHomePlayersDraft(players) {
+    localStorage.setItem(STORAGE_KEYS.homePlayersDraft, JSON.stringify(players || []));
+  }
+
+  function createKnockoutMatch(id, stage) {
+    return { id, stage, team1: '', team2: '', score1: null, score2: null };
+  }
+
+  function createEmptyKnockouts() {
+    return {
+      semifinal1: createKnockoutMatch('SEMIFINAL-1', 'Semifinal 1'),
+      semifinal2: createKnockoutMatch('SEMIFINAL-2', 'Semifinal 2'),
+      qualifier1: createKnockoutMatch('QUALIFIER-1', 'Qualifier 1'),
+      eliminator: createKnockoutMatch('ELIMINATOR', 'Eliminator'),
+      qualifier2: createKnockoutMatch('QUALIFIER-2', 'Qualifier 2'),
+      final: createKnockoutMatch('FINAL', 'Final'),
+    };
+  }
+
+  function compareStandingsRows(a, b) {
+    if ((b.points ?? 0) !== (a.points ?? 0)) return (b.points ?? 0) - (a.points ?? 0);
+    if ((b.pd ?? 0) !== (a.pd ?? 0)) return (b.pd ?? 0) - (a.pd ?? 0);
+    if ((b.pf ?? 0) !== (a.pf ?? 0)) return (b.pf ?? 0) - (a.pf ?? 0);
+    return (a.team || '').localeCompare(b.team || '');
+  }
+
+  function ensureKnockoutStructure() {
+    if (!tournament) return createEmptyKnockouts();
+    if (!tournament.knockout) {
+      tournament.knockout = createEmptyKnockouts();
+    }
+    return tournament.knockout;
+  }
+
+  function resetKnockoutStructure(knockout) {
+    if (!knockout) return;
+    clearMatchParticipants(knockout.semifinal1);
+    clearMatchParticipants(knockout.semifinal2);
+    clearMatchParticipants(knockout.qualifier1);
+    clearMatchParticipants(knockout.eliminator);
+    clearMatchParticipants(knockout.qualifier2);
+    clearMatchParticipants(knockout.final);
+  }
+
+  function assignMatchParticipants(match, team1, team2) {
+    if (!match) return;
+    if (team1 !== undefined) {
+      const normalized = team1 || '';
+      if (match.team1 !== normalized) {
+        match.team1 = normalized;
+        match.score1 = null;
+      }
+    }
+    if (team2 !== undefined) {
+      const normalized = team2 || '';
+      if (match.team2 !== normalized) {
+        match.team2 = normalized;
+        match.score2 = null;
+      }
+    }
+  }
+
+  function clearMatchParticipants(match) {
+    assignMatchParticipants(match, '', '');
+    if (match) {
+      match.score1 = null;
+      match.score2 = null;
+    }
+  }
+
+  function getMatchOutcome(match) {
+    if (!match) return null;
+    const s1 = Number(match.score1);
+    const s2 = Number(match.score2);
+    if (!Number.isFinite(s1) || !Number.isFinite(s2)) return null;
+    if (s1 === s2) return null;
+    if (!match.team1 || !match.team2) return null;
+    if (s1 > s2) {
+      return { winner: match.team1, loser: match.team2, score: [s1, s2] };
+    }
+    return { winner: match.team2, loser: match.team1, score: [s1, s2] };
+  }
+
+  function computeFinalResultFromKnockout(knockout) {
+    if (!knockout) return null;
+    const outcome = getMatchOutcome(knockout.final);
+    if (!outcome) return null;
+    return { winner: outcome.winner, runnerUp: outcome.loser };
+  }
+
+  function computeKnockoutSeeds(leagueStandings) {
+    if (!Array.isArray(leagueStandings)) return [];
+    const sorted = [...leagueStandings].sort(compareStandingsRows);
+    return sorted.map(row => row.team).filter(Boolean);
+  }
+
+  function computeKnockoutParticipants(groupStandings, leagueStandings) {
+    if (!tournament) {
+      return [];
+    }
+
+    if (tournament.type === 'Groups') {
+      if (!Array.isArray(groupStandings) || groupStandings.length === 0) {
+        return [];
+      }
+      if (groupStandings.length === 1) {
+        return computeKnockoutSeeds(groupStandings[0]);
+      }
+
+      const participants = [];
+      const maxGroups = Math.min(groupStandings.length, 2);
+      for (let gi = 0; gi < maxGroups; gi++) {
+        const standings = groupStandings[gi] || [];
+        const first = standings[0]?.team;
+        const second = standings[1]?.team;
+        if (first) participants.push(first);
+        if (second) participants.push(second);
+      }
+      return participants.filter(Boolean);
+    }
+
+    return computeKnockoutSeeds(leagueStandings).slice(0, 4);
+  }
+
+  function computeDirectFinalParticipants(groupStandings, leagueStandings) {
+    if (!tournament) return [];
+
+    if (tournament.type === 'Groups' && Array.isArray(groupStandings)) {
+      return groupStandings
+        .flat()
+        .sort(compareStandingsRows)
+        .slice(0, 2)
+        .map(row => row.team)
+        .filter(Boolean);
+    }
+
+    return computeKnockoutSeeds(leagueStandings).slice(0, 2);
+  }
+
+  function getActivePlayersList() {
+    return tournament ? (tournament.players || []) : getHomePlayersDraft();
+  }
+
+  function getPlayersForTeamAssignment() {
+    if (tournament && Array.isArray(tournament.players) && tournament.players.length > 0) {
+      return [...tournament.players];
+    }
+    const draft = getHomePlayersDraft();
+    return Array.isArray(draft) ? [...draft] : [];
+  }
+
+  function setActivePlayersList(players) {
+    if (tournament) {
+      tournament.players = [...(players || [])];
+      saveTournamentAndRefresh();
+    } else {
+      setHomePlayersDraft(players || []);
+    }
+  }
+
+  function updateSavePlayerListBtnState() {
+    const list = getActivePlayersList();
+    savePlayerListBtn.disabled = !list || list.length === 0;
+  }
+
+  function getIndex(key) {
+    return safeJsonParse(localStorage.getItem(key) || '[]', []);
+  }
+
+  function setIndex(key, arr) {
+    localStorage.setItem(key, JSON.stringify(arr));
+  }
+
+  function saveTournament() {
+    if (!tournament) return;
+    localStorage.setItem(STORAGE_KEYS.tournamentPrefix + tournament.id, JSON.stringify(tournament));
+    localStorage.setItem(STORAGE_KEYS.activeTournamentId, tournament.id);
+  }
+
+  function upsertTournamentIndex(t) {
+    const idx = getIndex(STORAGE_KEYS.tournamentsIndex);
+    const existing = idx.find(x => x.id === t.id);
+    if (existing) {
+      existing.name = t.name;
+      existing.updatedAt = Date.now();
+    } else {
+      idx.push({ id: t.id, name: t.name, createdAt: Date.now(), updatedAt: Date.now() });
+    }
+    idx.sort((a,b) => b.updatedAt - a.updatedAt);
+    setIndex(STORAGE_KEYS.tournamentsIndex, idx);
+  }
+
+  function deleteTournamentById(id) {
+    localStorage.removeItem(STORAGE_KEYS.tournamentPrefix + id);
+    const idx = getIndex(STORAGE_KEYS.tournamentsIndex).filter(x => x.id !== id);
+    setIndex(STORAGE_KEYS.tournamentsIndex, idx);
+    if (localStorage.getItem(STORAGE_KEYS.activeTournamentId) === id) {
+      localStorage.removeItem(STORAGE_KEYS.activeTournamentId);
+      localStorage.removeItem(STORAGE_KEYS.activeView);
+    }
+  }
+
+  function loadTournamentById(id) {
+    const data = localStorage.getItem(STORAGE_KEYS.tournamentPrefix + id);
+    if (!data) return null;
+    return safeJsonParse(data, null);
+  }
+
+  function upsertPlayerList(name, players) {
+    const listId = lower(name);
+    localStorage.setItem(STORAGE_KEYS.playerListPrefix + listId, JSON.stringify({ name, players }));
+    const idx = getIndex(STORAGE_KEYS.playerListsIndex);
+    if (!idx.includes(listId)) idx.push(listId);
+    idx.sort();
+    setIndex(STORAGE_KEYS.playerListsIndex, idx);
+  }
+
+  function loadPlayerList(listId) {
+    const data = localStorage.getItem(STORAGE_KEYS.playerListPrefix + listId);
+    if (!data) return null;
+    return safeJsonParse(data, null);
+  }
+
+  function refreshHomeDropdowns() {
+    // tournaments
+    const idx = getIndex(STORAGE_KEYS.tournamentsIndex);
+    loadTournamentSelect.innerHTML = '<option value="">-- Select --</option>';
+    idx.forEach(x => {
+      const opt = document.createElement('option');
+      opt.value = x.id;
+      opt.textContent = x.name;
+      loadTournamentSelect.appendChild(opt);
+    });
+    loadTournamentBtn.disabled = !loadTournamentSelect.value;
+    deleteTournamentBtn.disabled = !loadTournamentSelect.value;
+
+    // player lists
+    const pIdx = getIndex(STORAGE_KEYS.playerListsIndex);
+    playerListSelect.innerHTML = '<option value="">-- Select --</option>';
+    pIdx.forEach(id => {
+      const pl = loadPlayerList(id);
+      if (!pl) return;
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = pl.name;
+      playerListSelect.appendChild(opt);
+    });
+    loadPlayerListBtn.disabled = !playerListSelect.value;
+  }
+
+  // ----------------------------
+  // Global leaderboard (across tournaments)
+  // Each team accumulates:
+  // - totalPoints: winner=10, runner-up=5, unqualified/non-playoff=2 per completed tournament
+  // - winnerCount / runnerUpCount
+  // - gamesPlayed: total league/group matches played across tournaments
+  // - daysPlayed: tournaments participated in (1 per tournament where team had >=1 match)
+  // ----------------------------
+  /**
+   * Global leaderboard is PLAYER-based.
+   * - Singles: each team has 1 player → player accumulates stats.
+   * - Doubles: each team has 2 players → BOTH players get full team stats.
+   *
+   * We recompute from *all saved tournaments* to stay correct even if users edit
+   * finals, reset tournaments, or delete tournaments.
+   */
+  function ensureGlobalPlayerRow(board, player) {
+    const key = normalizePlayerName(player);
+    if (!key) return null;
+    if (!board[key]) {
+      board[key] = {
+        player: key,
+        totalPoints: 0,
+        winnerCount: 0,
+        runnerUpCount: 0,
+        gamesPlayed: 0,
+        daysPlayed: 0,
+      };
+    }
+    return board[key];
+  }
+
+  function getAllSavedTournaments() {
+    const idx = getIndex(STORAGE_KEYS.tournamentsIndex);
+    return idx
+      .map(x => loadTournamentById(x.id))
+      .filter(Boolean);
+  }
+
+  function getPlayoffParticipantTeams(t) {
+    const participants = new Set();
+    const knockout = t?.knockout || {};
+    [
+      knockout.semifinal1,
+      knockout.semifinal2,
+      knockout.qualifier1,
+      knockout.eliminator,
+      knockout.qualifier2,
+      knockout.final,
+      t?.finalMatch,
+    ].forEach(match => {
+      if (!match) return;
+      if (match.team1) participants.add(match.team1);
+      if (match.team2) participants.add(match.team2);
+    });
+    return participants;
+  }
+
+  function computeTournamentContribution(t) {
+    if (!t) return null;
+
+    const teams = t.teams || [];
+    const teamPlayers = t.teamPlayers || {};
+    const standings = computeStandingsFromMatches(teams, t.matches || []);
+
+    const playedMap = new Map(standings.map(s => [s.team, s.played]));
+    const finalResult = t.finalResult || computeFinalResultFromFinalMatch(t.finalMatch);
+    const playoffParticipants = getPlayoffParticipantTeams(t);
+
+    // Build player contribution by applying per-team contributions to the mapped players.
+    const perPlayer = {};
+    teams.forEach(team => {
+      const assigned = (teamPlayers[team] || []).map(normalizePlayerName).filter(Boolean);
+      if (assigned.length === 0) return;
+
+      const gamesPlayed = playedMap.get(team) ?? 0;
+      const daysPlayed = gamesPlayed > 0 ? 1 : 0;
+
+      const isWinner = finalResult?.winner === team;
+      const isRunner = finalResult?.runnerUp === team;
+      const isUnqualified = !!finalResult && !playoffParticipants.has(team);
+      const totalPoints = isWinner ? 10 : isRunner ? 5 : isUnqualified ? 2 : 0;
+
+      assigned.forEach(player => {
+        if (!perPlayer[player]) {
+          perPlayer[player] = {
+            player,
+            totalPoints: 0,
+            winnerCount: 0,
+            runnerUpCount: 0,
+            gamesPlayed: 0,
+            daysPlayed: 0,
+          };
+        }
+        perPlayer[player].totalPoints += totalPoints;
+        perPlayer[player].winnerCount += isWinner ? 1 : 0;
+        perPlayer[player].runnerUpCount += isRunner ? 1 : 0;
+        perPlayer[player].gamesPlayed += gamesPlayed;
+        perPlayer[player].daysPlayed += daysPlayed;
+      });
+    });
+
+    return perPlayer;
+  }
+
+  function computeGlobalLeaderboardBoardFromAllTournaments() {
+    const board = {};
+    const tournaments = getAllSavedTournaments();
+    tournaments.forEach(t => {
+      const contrib = computeTournamentContribution(t);
+      if (!contrib) return;
+      Object.values(contrib).forEach(row => {
+        const r = ensureGlobalPlayerRow(board, row.player);
+        if (!r) return;
+        r.totalPoints += row.totalPoints;
+        r.winnerCount += row.winnerCount;
+        r.runnerUpCount += row.runnerUpCount;
+        r.gamesPlayed += row.gamesPlayed;
+        r.daysPlayed += row.daysPlayed;
+      });
+    });
+    return board;
+  }
+
+  function computeGlobalLeaderboardRows() {
+    const board = computeGlobalLeaderboardBoardFromAllTournaments();
+    const rows = Object.values(board);
+    rows.sort((a, b) => {
+      if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+      if (b.winnerCount !== a.winnerCount) return b.winnerCount - a.winnerCount;
+      if (b.runnerUpCount !== a.runnerUpCount) return b.runnerUpCount - a.runnerUpCount;
+      if (b.gamesPlayed !== a.gamesPlayed) return b.gamesPlayed - a.gamesPlayed;
+      if (b.daysPlayed !== a.daysPlayed) return b.daysPlayed - a.daysPlayed;
+      return a.player.localeCompare(b.player);
+    });
+    return rows;
+  }
+
+  function renderGlobalLeaderboard(rows) {
+    finalLeaderboardOutput.innerHTML = '';
+    if (!rows || rows.length === 0) {
+      finalLeaderboardOutput.innerHTML = '<div class="hint">No global leaderboard yet. Complete a tournament final match to record results.</div>';
+      return;
+    }
+
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    ['Pos', 'Player', 'Total Points', 'Titles (Winner)', 'Runner-up', 'Games Played', 'Days Played'].forEach(h => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      const cells = [
+        i + 1,
+        r.player,
+        r.totalPoints,
+        r.winnerCount,
+        r.runnerUpCount,
+        r.gamesPlayed,
+        r.daysPlayed,
+      ];
+      cells.forEach(c => {
+        const td = document.createElement('td');
+        td.textContent = c;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    finalLeaderboardOutput.appendChild(table);
+  }
+
+  // No nested home tabs now; bottom tabs drive navigation.
+
+  function clearOutputs() {
+    scheduleOutput.innerHTML = '';
+    playoffBracketOutput.innerHTML = '';
+    finalMatchOutput.innerHTML = '';
+    pointsTableOutput.innerHTML = '';
+    finalLeaderboardOutput.innerHTML = '';
+  }
+
+  // ----------------------------
+  // Player list UI
+  // ----------------------------
+  function renderPlayersList() {
+    playersListDiv.innerHTML = '';
+
+    const players = getActivePlayersList();
+    if (players.length === 0) {
+      playersListDiv.innerHTML = '<div class="hint">No players added yet.</div>';
+      return;
+    }
+
+    players.forEach((player, idx) => {
+      const row = document.createElement('div');
+      row.className = 'listItem';
+
+      const nameText = document.createElement('div');
+      nameText.className = 'playerNameText';
+      nameText.textContent = player;
+
+      const del = document.createElement('button');
+      del.className = 'danger removeIconBtn';
+      del.type = 'button';
+      del.textContent = '×';
+      del.setAttribute('aria-label', `Remove ${player}`);
+      del.title = `Remove ${player}`;
+      del.addEventListener('click', () => {
+        const list = [...getActivePlayersList()];
+        list.splice(idx, 1);
+        setActivePlayersList(list);
+        updateSavePlayerListBtnState();
+        renderPlayersList();
+        if (tournament) {
+          tournament.teams = [];
+          tournament.teamPlayers = {};
+          teamsPreviewDiv.innerHTML = '<div class="hint">Build teams after selecting match type and number of teams.</div>';
+          updateGenerateScheduleBtn();
+          updateBuildTeamsBtn();
+          saveTournamentAndRefresh();
+        }
+      });
+
+      row.appendChild(nameText);
+      row.appendChild(del);
+      playersListDiv.appendChild(row);
+    });
+  }
+
+  function validatePlayersUniqueness() {
+    if (!tournament) return false;
+    const set = new Set();
+    for (const p of (tournament.players || [])) {
+      const n = lower(normalizePlayerName(p));
+      if (!n) return false;
+      if (set.has(n)) return false;
+      set.add(n);
+    }
+    return true;
+  }
+
+  function validateTeamAssignments() {
+    if (!tournament) return false;
+    const req = requiredPlayersPerTeam();
+    if (req === 0) return false;
+    const teams = tournament.teams || [];
+    if (!teams.length) return false;
+
+    const pickedLower = new Set();
+    for (const team of teams) {
+      const players = (tournament.teamPlayers?.[team] || []).map(normalizePlayerName);
+      if (players.length !== req) return false;
+      for (const p of players) {
+        if (!p) return false;
+        const pl = lower(p);
+        if (pickedLower.has(pl)) return false;
+        pickedLower.add(pl);
+      }
+    }
+    return true;
+  }
+
+  function requiredPlayersPerTeam() {
+    if (!tournament) return 0;
+    if (tournament.matchType === 'Singles') return 1;
+    if (tournament.matchType === 'Doubles') return 2;
+    return 0;
+  }
+
+  function getPlayersCountForCurrentTournament() {
+    // Prefer the players that are actually attached to the loaded tournament.
+    // If no tournament is loaded, fall back to the draft players in Home → Players.
+    const list = getActivePlayersList();
+    return Array.isArray(list) ? list.length : 0;
+  }
+
+  function updateBuildTeamsBtn() {
+    // Relaxed: enable "Create Teams" whenever there is a tournament,
+    // a match type, and a valid teams count. We no longer block on
+    // having players/uniqueness before the user can click it.
+    if (!buildTeamsBtn) return;
+
+    if (!tournament) {
+      buildTeamsBtn.disabled = true;
+      buildTeamsBtn.textContent = 'Build Teams';
+      buildTeamsBtn.style.pointerEvents = "none";
+      buildTeamsBtn.style.opacity = "0.6";
+      return;
+    }
+
+    const mtOk = !!matchTypeSelect.value;
+    const tc = parseInt(teamsCountInput.value, 10);
+    const tcOk = Number.isFinite(tc) && tc >= 2;
+
+    const req = requiredPlayersPerTeam();
+    const availablePlayers = getPlayersForTeamAssignment().length;
+    const hasEnoughPlayers = req > 0 ? (tc * req) <= availablePlayers : true;
+
+    buildTeamsBtn.disabled = !(mtOk && tcOk && hasEnoughPlayers);
+    buildTeamsBtn.textContent = (tournament.teams || []).length > 0 ? 'Rebuild Teams' : 'Build Teams';
+    buildTeamsBtn.style.pointerEvents = buildTeamsBtn.disabled ? "none" : "auto";
+    buildTeamsBtn.style.opacity = buildTeamsBtn.disabled ? "0.6" : "1";
+  }
+
+  function renderTeamsPreview() {
+    teamsPreviewDiv.innerHTML = '';
+    if (!tournament) return;
+
+    const teams = tournament.teams || [];
+    const mapping = tournament.teamPlayers || {};
+
+    if (!matchTypeSelect.value || !teamsCountInput.value) {
+      teamsPreviewDiv.innerHTML = '<div class="hint">Select match type and number of teams, then click “Build Teams”.</div>';
+      return;
+    }
+
+    if (!teams.length) {
+      teamsPreviewDiv.innerHTML = '<div class="hint">Teams not built yet.</div>';
+      return;
+    }
+
+    // Build a "taken" set to enforce uniqueness across dropdowns.
+    const taken = new Set();
+    teams.forEach(team => {
+      (mapping[team] || []).forEach(p => {
+        const n = lower(normalizePlayerName(p));
+        if (n) taken.add(n);
+      });
+    });
+
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    const cols = tournament.matchType === 'Doubles'
+      ? ['Team', 'Player 1', 'Player 2']
+      : ['Team', 'Player'];
+    cols.forEach(h => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    function buildPlayerSelect(team, slotIndex) {
+      const sel = document.createElement('select');
+      sel.style.marginBottom = '0';
+
+      const current = (mapping[team] || [])[slotIndex] || '';
+
+      const optEmpty = document.createElement('option');
+      optEmpty.value = '';
+      optEmpty.textContent = '-- Select --';
+      sel.appendChild(optEmpty);
+
+      getPlayersForTeamAssignment().forEach(p => {
+        const name = normalizePlayerName(p);
+        if (!name) return;
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+
+        const pickedByOther = taken.has(lower(name)) && lower(name) !== lower(current);
+        opt.disabled = pickedByOther;
+        sel.appendChild(opt);
+      });
+
+      sel.value = current;
+      sel.addEventListener('change', () => {
+        const req = requiredPlayersPerTeam();
+        if (!tournament.teamPlayers) tournament.teamPlayers = {};
+        if (!Array.isArray(tournament.teamPlayers[team])) {
+          tournament.teamPlayers[team] = new Array(req).fill('');
+        }
+        tournament.teamPlayers[team][slotIndex] = sel.value;
+        saveTournamentAndRefresh();
+        renderTeamsPreview();
+        updateGenerateScheduleBtn();
+        // standings/leaderboards depend on who is in which team
+        recalcAndRender();
+      });
+
+      return sel;
+    }
+
+    teams.forEach(team => {
+      const tr = document.createElement('tr');
+      const tdTeam = document.createElement('td');
+      tdTeam.textContent = team;
+      tr.appendChild(tdTeam);
+
+      const td1 = document.createElement('td');
+      td1.appendChild(buildPlayerSelect(team, 0));
+      tr.appendChild(td1);
+      if (tournament.matchType === 'Doubles') {
+        const td2 = document.createElement('td');
+        td2.appendChild(buildPlayerSelect(team, 1));
+        tr.appendChild(td2);
+      }
+
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    teamsPreviewDiv.appendChild(table);
+  }
+
+  function saveTournamentAndRefresh() {
+    if (!tournament) return;
+    upsertTournamentIndex(tournament);
+    saveTournament();
+  }
+
+  // ----------------------------
+  // Scheduling
+  // ----------------------------
+  let matchIdCounter = 1;
+  function nextMatchId() { return matchIdCounter++; }
+
+  function makeMatch(team1, team2, meta) {
+    return {
+      id: nextMatchId(),
+      team1,
+      team2,
+      score1: null,
+      score2: null,
+      ...meta,
+    };
+  }
+
+  function buildLeagueMatches(teams, fixtureType) {
+    const list = [];
+    for (let i = 0; i < teams.length; i++) {
+      for (let j = i + 1; j < teams.length; j++) {
+        list.push(makeMatch(teams[i], teams[j], { stage: 'League', groupIndex: null }));
+        if (fixtureType === 'HomeAway') {
+          list.push(makeMatch(teams[j], teams[i], { stage: 'League', groupIndex: null }));
+        }
+      }
+    }
+    return list;
+  }
+
+  function buildGroupMatches(groups, fixtureType) {
+    const all = [];
+    groups.forEach((groupTeams, groupIndex) => {
+      for (let i = 0; i < groupTeams.length; i++) {
+        for (let j = i + 1; j < groupTeams.length; j++) {
+          all.push(makeMatch(groupTeams[i], groupTeams[j], { stage: 'Group', groupIndex }));
+          if (fixtureType === 'HomeAway') {
+            all.push(makeMatch(groupTeams[j], groupTeams[i], { stage: 'Group', groupIndex }));
+          }
+        }
+      }
+    });
+    return all;
+  }
+
+  function partitionIntoGroups(teams, groupsCount, teamsPerGroup) {
+    const totalNeeded = groupsCount * teamsPerGroup;
+    const picked = teams.slice(0, totalNeeded);
+    const groups = [];
+    for (let g = 0; g < groupsCount; g++) {
+      groups.push(picked.slice(g * teamsPerGroup, (g + 1) * teamsPerGroup));
+    }
+    return groups;
+  }
+
+  // Final match: schedule between #1 and #2 from points table
+  function buildFinalMatchFromStandings(standings) {
+    if (standings.length < 2) return null;
+    return {
+      id: 'FINAL',
+      team1: standings[0].team,
+      team2: standings[1].team,
+      score1: null,
+      score2: null,
+      stage: 'Final',
+      groupIndex: null,
+    };
+  }
+
+  // ----------------------------
+  // Points Table (winner=2, loser=0, no draws)
+  // ----------------------------
+  function computeStandingsForTeams(teams, matchesList) {
+    const stats = {};
+    teams.forEach(t => {
+      stats[t] = {
+        team: t,
+        played: 0,
+        won: 0,
+        lost: 0,
+        pf: 0,
+        pa: 0,
+        pd: 0,
+        points: 0,
+      };
+    });
+
+    matchesList.forEach(m => {
+      if (m.stage === 'Final') return;
+      if (m.score1 === null || m.score2 === null) return;
+      if (!(m.team1 in stats) || !(m.team2 in stats)) return;
+
+      const a = stats[m.team1];
+      const b = stats[m.team2];
+
+      a.played++; b.played++;
+      a.pf += m.score1; a.pa += m.score2;
+      b.pf += m.score2; b.pa += m.score1;
+
+      if (m.score1 > m.score2) {
+        a.won++; b.lost++;
+        a.points += 2;
+      } else if (m.score2 > m.score1) {
+        b.won++; a.lost++;
+        b.points += 2;
+      } else {
+        // No draws supported. If equal score entered, treat as no-result.
+        // You can change this if you want 1-1 points.
+        a.played--; b.played--; // rollback
+        a.pf -= m.score1; a.pa -= m.score2;
+        b.pf -= m.score2; b.pa -= m.score1;
+      }
+    });
+
+    Object.values(stats).forEach(s => {
+      s.pd = s.pf - s.pa;
+    });
+
+    const sorted = Object.values(stats).sort((x, y) => {
+      if (y.points !== x.points) return y.points - x.points;
+      if (y.pd !== x.pd) return y.pd - x.pd;
+      if (y.pf !== x.pf) return y.pf - x.pf;
+      return x.team.localeCompare(y.team);
+    });
+
+    return sorted;
+  }
+
+  function computeStandingsFromMatches(teams, matchesList) {
+    return computeStandingsForTeams(teams, matchesList);
+  }
+
+  function computeLeagueStandings() {
+    if (!tournament) return [];
+    return computeStandingsFromMatches(tournament.teams || [], (tournament.matches || []).filter(m => m.stage !== 'Final'));
+  }
+
+  function computeGroupStandings(groupsMeta) {
+    if (!tournament || !Array.isArray(groupsMeta)) return [];
+    return groupsMeta.map((groupTeams, index) => {
+      const groupMatches = (tournament.matches || []).filter(m => m.stage === 'Group' && m.groupIndex === index);
+      return computeStandingsFromMatches(groupTeams, groupMatches);
+    });
+  }
+
+  function getTeamDisplayName(team) {
+    if (!tournament) return team;
+    const players = (tournament.teamPlayers?.[team] || []).map(normalizePlayerName).filter(Boolean);
+    if (players.length === 0) return team;
+    // Singles: 1 player; Doubles: show both.
+    return players.join(' / ');
+  }
+
+  function renderPointsTableAll(standings) {
+    pointsTableOutput.innerHTML = '';
+    if (!standings || standings.length === 0) {
+      pointsTableOutput.innerHTML = '<div class="hint">No standings yet.</div>';
+      return;
+    }
+
+    const renderTableForStandings = (title, rows) => {
+      if (!rows || rows.length === 0) return;
+      if (title) {
+        const heading = document.createElement('h4');
+        heading.textContent = title;
+        pointsTableOutput.appendChild(heading);
+      }
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const trh = document.createElement('tr');
+      ['Pos', 'Team Players', 'P', 'W', 'L', 'PF', 'PA', 'PD', 'Pts'].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        trh.appendChild(th);
+      });
+      thead.appendChild(trh);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      rows.forEach((s, i) => {
+        const tr = document.createElement('tr');
+        const cells = [
+          i + 1,
+          getTeamDisplayName(s.team),
+          s.played,
+          s.won,
+          s.lost,
+          s.pf,
+          s.pa,
+          s.pd,
+          s.points,
+        ];
+        cells.forEach(c => {
+          const td = document.createElement('td');
+          td.textContent = c;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      pointsTableOutput.appendChild(table);
+    };
+
+    if (tournament && tournament.type === 'Groups' && Array.isArray(standings[0])) {
+      standings.forEach((groupRows, idx) => {
+        renderTableForStandings(`Group ${idx + 1}`, groupRows);
+      });
+    } else {
+      renderTableForStandings(null, standings);
+    }
+  }
+
+  // ----------------------------
+  // Final Leaderboard (10/5/0)
+  // ----------------------------
+  function computeFinalResultFromFinalMatch(finalMatch) {
+    if (!finalMatch) return null;
+    if (finalMatch.score1 === null || finalMatch.score2 === null) return null;
+    if (finalMatch.score1 === finalMatch.score2) return null; // no draws
+
+    const winner = finalMatch.score1 > finalMatch.score2 ? finalMatch.team1 : finalMatch.team2;
+    const runnerUp = finalMatch.score1 > finalMatch.score2 ? finalMatch.team2 : finalMatch.team1;
+    return { winner, runnerUp };
+  }
+
+
+  // ----------------------------
+  // Rendering schedule
+  // ----------------------------
+  function renderSchedule(matchesList) {
+    scheduleOutput.innerHTML = '';
+    const list = Array.isArray(matchesList) ? matchesList : [];
+    if (!list.length) {
+      scheduleOutput.innerHTML = '<div class="hint">No matches scheduled.</div>';
+      return;
+    }
+
+    const byGroup = new Map();
+    list.forEach(m => {
+      const key = (tournament?.type === 'Groups' && m.groupIndex !== null && m.groupIndex !== undefined)
+        ? `G${m.groupIndex + 1}`
+        : 'ALL';
+      if (!byGroup.has(key)) byGroup.set(key, []);
+      byGroup.get(key).push(m);
+    });
+
+    for (const [key, groupMatches] of byGroup.entries()) {
+      if (tournament?.type === 'Groups' && key !== 'ALL') {
+        const h = document.createElement('h4');
+        h.textContent = `Group ${key.slice(1)}`;
+        scheduleOutput.appendChild(h);
+      }
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const trh = document.createElement('tr');
+      ['Match', 'Team 1', 'Score', ':', 'Score', 'Team 2'].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        trh.appendChild(th);
+      });
+      thead.appendChild(trh);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      groupMatches.forEach(m => {
+        const tr = document.createElement('tr');
+
+        const tdId = document.createElement('td');
+        tdId.textContent = m.id;
+        tr.appendChild(tdId);
+
+        const tdT1 = document.createElement('td');
+        tdT1.textContent = getTeamDisplayName(m.team1);
+        tr.appendChild(tdT1);
+
+        const tdS1 = document.createElement('td');
+        const i1 = document.createElement('input');
+        i1.type = 'number';
+        i1.min = 0;
+        i1.style.width = '70px';
+        i1.value = m.score1 === null || m.score1 === undefined ? '' : m.score1;
+        i1.addEventListener('input', () => onScoreInput(m.id, 1, i1.value));
+        tdS1.appendChild(i1);
+        tr.appendChild(tdS1);
+
+        const tdSep = document.createElement('td');
+        tdSep.textContent = ':';
+        tr.appendChild(tdSep);
+
+        const tdS2 = document.createElement('td');
+        const i2 = document.createElement('input');
+        i2.type = 'number';
+        i2.min = 0;
+        i2.style.width = '70px';
+        i2.value = m.score2 === null || m.score2 === undefined ? '' : m.score2;
+        i2.addEventListener('input', () => onScoreInput(m.id, 2, i2.value));
+        tdS2.appendChild(i2);
+        tr.appendChild(tdS2);
+
+        const tdT2 = document.createElement('td');
+        tdT2.textContent = getTeamDisplayName(m.team2);
+        tr.appendChild(tdT2);
+
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      scheduleOutput.appendChild(table);
+    }
+  }
+
+  // ----------------------------
+  // Score handling & updates
+  // ----------------------------
+  function onScoreInput(matchId, which, rawVal) {
+    if (!tournament) return;
+    const match = tournament.matches.find(m => m.id === matchId);
+    if (!match) return;
+
+    const v = rawVal === '' ? null : parseInt(rawVal, 10);
+    if (which === 1) match.score1 = Number.isFinite(v) ? v : null;
+    if (which === 2) match.score2 = Number.isFinite(v) ? v : null;
+
+    // update derived tables
+    recalcAndRender();
+    saveTournamentAndRefresh();
+  }
+
+  function recalcAndRender() {
+    if (!tournament) return;
+
+    const groupAssignments = tournament.type === 'Groups' ? tournament.groupAssignments || [] : [];
+    const groupStandings = tournament.type === 'Groups' ? computeGroupStandings(groupAssignments) : null;
+    const leagueStandings = computeLeagueStandings();
+
+    if (tournament.type === 'Groups' && groupStandings) {
+      renderPointsTableAll(groupStandings);
+    } else {
+      renderPointsTableAll(leagueStandings);
+    }
+
+    const knockout = ensureKnockoutStructure();
+    const seeds = computeKnockoutParticipants(groupStandings, leagueStandings);
+    const directFinalSeeds = computeDirectFinalParticipants(groupStandings, leagueStandings);
+
+    const playoffFormat = tournament.playoffFormat || 'Semifinals';
+
+    if (playoffFormat === 'Final') {
+      clearMatchParticipants(knockout.semifinal1);
+      clearMatchParticipants(knockout.semifinal2);
+      clearMatchParticipants(knockout.qualifier1);
+      clearMatchParticipants(knockout.eliminator);
+      clearMatchParticipants(knockout.qualifier2);
+      if (directFinalSeeds.length >= 2) {
+        assignMatchParticipants(knockout.final, directFinalSeeds[0], directFinalSeeds[1]);
+      } else {
+        clearMatchParticipants(knockout.final);
+      }
+    } else if (playoffFormat === 'Semifinals') {
+      if (seeds.length >= 4) {
+        assignMatchParticipants(knockout.semifinal1, seeds[0], seeds[3]);
+        assignMatchParticipants(knockout.semifinal2, seeds[1], seeds[2]);
+        const semi1Outcome = getMatchOutcome(knockout.semifinal1);
+        const semi2Outcome = getMatchOutcome(knockout.semifinal2);
+        assignMatchParticipants(knockout.final,
+          semi1Outcome ? semi1Outcome.winner : '',
+          semi2Outcome ? semi2Outcome.winner : ''
+        );
+      } else {
+        clearMatchParticipants(knockout.semifinal1);
+        clearMatchParticipants(knockout.semifinal2);
+        clearMatchParticipants(knockout.final);
+      }
+    } else {
+      // Qualifier flow: seeds[0]=1, seeds[1]=2, seeds[2]=3, seeds[3]=4
+      if (seeds.length >= 4) {
+        assignMatchParticipants(knockout.qualifier1, seeds[0], seeds[1]);
+        assignMatchParticipants(knockout.eliminator, seeds[2], seeds[3]);
+
+        const qualifier1Outcome = getMatchOutcome(knockout.qualifier1);
+        const eliminatorOutcome = getMatchOutcome(knockout.eliminator);
+
+        const qualifier1Loser = qualifier1Outcome ? qualifier1Outcome.loser : '';
+        const eliminatorWinner = eliminatorOutcome ? eliminatorOutcome.winner : '';
+        assignMatchParticipants(knockout.qualifier2, qualifier1Loser, eliminatorWinner);
+
+        const qualifier2Outcome = getMatchOutcome(knockout.qualifier2);
+        const qualifier1Winner = qualifier1Outcome ? qualifier1Outcome.winner : '';
+        const qualifier2Winner = qualifier2Outcome ? qualifier2Outcome.winner : '';
+        assignMatchParticipants(knockout.final, qualifier1Winner, qualifier2Winner);
+      } else {
+        clearMatchParticipants(knockout.qualifier1);
+        clearMatchParticipants(knockout.eliminator);
+        clearMatchParticipants(knockout.qualifier2);
+        clearMatchParticipants(knockout.final);
+      }
+    }
+
+    // Sync the saved final match payload with the knockout final pairing/scores
+    if (!knockout.final.team1 && !knockout.final.team2) {
+      tournament.finalMatch = null;
+      tournament.finalResult = null;
+    } else {
+      tournament.finalMatch = {
+        id: knockout.final.id,
+        team1: knockout.final.team1,
+        team2: knockout.final.team2,
+        score1: knockout.final.score1,
+        score2: knockout.final.score2,
+        stage: 'Final',
+        groupIndex: null,
+      };
+    }
+
+    // Global leaderboard is recomputed from all saved tournaments
+    renderGlobalLeaderboard(computeGlobalLeaderboardRows());
+
+    renderKnockoutBracket(knockout, playoffFormat);
+
+  renderFinalMatch(tournament.finalMatch);
+
+  // Persist recalculated structures so Home tabs and reloads stay in sync
+  saveTournament();
+  }
+
+function renderFinalMatch(finalMatch) {
+  finalMatchOutput.innerHTML = '';
+  if (!tournament) {
+    finalMatchOutput.innerHTML = '<div class="hint">Load or create a tournament to see the championship match.</div>';
+    return;
+  }
+
+  if (!finalMatch || !finalMatch.team1 || !finalMatch.team2) {
+    finalMatchOutput.innerHTML = '<div class="hint">Final matchup will appear once playoff winners are decided.</div>';
+    tournament.finalResult = null;
+    saveTournament();
+    return;
+  }
+
+  const card = document.createElement('div');
+  card.className = 'knockoutCard';
+
+  const header = document.createElement('div');
+  header.className = 'knockoutHeader';
+  header.textContent = 'Final';
+  card.appendChild(header);
+
+  const teamRow = (label, scoreKey) => {
+    const row = document.createElement('div');
+    row.className = 'knockoutTeamRow';
+    const team = document.createElement('span');
+    team.textContent = label || '-';
+    row.appendChild(team);
+    const scoreInput = document.createElement('input');
+    scoreInput.type = 'number';
+    scoreInput.style.width = '70px';
+    scoreInput.min = 0;
+    scoreInput.value = finalMatch[scoreKey] ?? '';
+    scoreInput.addEventListener('input', () => {
+      finalMatch[scoreKey] = scoreInput.value === '' ? null : Number(scoreInput.value);
+      if (tournament.finalMatch) {
+        tournament.finalMatch[scoreKey] = finalMatch[scoreKey];
+      }
+      if (tournament.knockout?.final) {
+        tournament.knockout.final[scoreKey] = finalMatch[scoreKey];
+      }
+      tournament.finalResult = computeFinalResultFromFinalMatch(finalMatch);
+      saveTournament();
+      renderFinalSummary(finalMatch);
+      renderGlobalLeaderboard(computeGlobalLeaderboardRows());
+    });
+    row.appendChild(scoreInput);
+    return row;
+  };
+
+  card.appendChild(teamRow(getTeamDisplayName(finalMatch.team1), 'score1'));
+  card.appendChild(teamRow(getTeamDisplayName(finalMatch.team2), 'score2'));
+
+  finalMatchOutput.appendChild(card);
+  renderFinalSummary(finalMatch);
+}
+
+function renderFinalSummary(finalMatch) {
+  const existing = finalMatchOutput.querySelector('.finalSummary');
+  if (existing) existing.remove();
+
+  const summary = document.createElement('div');
+  summary.className = 'finalSummary';
+  summary.style.marginTop = '16px';
+  summary.style.display = 'flex';
+  summary.style.flexDirection = 'column';
+  summary.style.gap = '12px';
+
+  const result = computeFinalResultFromFinalMatch(finalMatch);
+  if (!result) {
+    summary.style.fontSize = '13px';
+    summary.style.color = 'var(--muted)';
+    summary.textContent = 'Enter scores above to lock in champion and runner-up.';
+    tournament.finalResult = null;
+    saveTournament();
+  } else {
+    tournament.finalResult = result;
+    saveTournament();
+
+    const champ = document.createElement('h1');
+    champ.textContent = `Champion: ${getTeamDisplayName(result.winner)}`;
+    champ.style.margin = '0';
+    champ.style.fontSize = '28px';
+    champ.style.fontWeight = '800';
+    champ.style.color = 'var(--accent)';
+    champ.style.textTransform = 'uppercase';
+
+    const runner = document.createElement('h2');
+    runner.textContent = `Runner-up: ${getTeamDisplayName(result.runnerUp)}`;
+    runner.style.margin = '0';
+    runner.style.fontSize = '20px';
+    runner.style.fontWeight = '700';
+    runner.style.color = 'var(--muted)';
+
+    summary.appendChild(champ);
+    summary.appendChild(runner);
+  }
+
+  finalMatchOutput.appendChild(summary);
+}
+
+  // (Old in-section tabs removed; each feature has its own screen.)
+
+  // ----------------------------
+  // Validation for enabling schedule
+  // ----------------------------
+  function updateGenerateScheduleBtn() {
+    if (!tournament) {
+      generateScheduleBtn.disabled = true;
+      if (teamsGenerateScheduleBtn) {
+        teamsGenerateScheduleBtn.disabled = true;
+        teamsGenerateScheduleBtn.style.pointerEvents = "none";
+        teamsGenerateScheduleBtn.style.opacity = "0.6";
+      }
+    updateBottomNavState();
+      return;
+    }
+
+    const typeOk = !!tournamentTypeSelect.value;
+    const fixtureOk = !!fixtureTypeSelect.value;
+    // schedule depends on generated teams
+    const teamsOk = (tournament.teams || []).length >= 2;
+
+    let groupsOk = true;
+    if (tournamentTypeSelect.value === 'Groups') {
+      const gc = parseInt(groupsCountInput.value, 10);
+      const tpg = parseInt(teamsPerGroupInput.value, 10);
+      groupsOk = Number.isFinite(gc) && gc >= 1 && Number.isFinite(tpg) && tpg >= 2 && (gc * tpg) <= (tournament.teams || []).length;
+    }
+
+    generateScheduleBtn.disabled = !(typeOk && fixtureOk && teamsOk && groupsOk);
+    generateScheduleBtn.style.pointerEvents = generateScheduleBtn.disabled ? "none" : "auto";
+    generateScheduleBtn.style.opacity = generateScheduleBtn.disabled ? "0.6" : "1";
+    if (teamsGenerateScheduleBtn) {
+      teamsGenerateScheduleBtn.disabled = generateScheduleBtn.disabled;
+      teamsGenerateScheduleBtn.style.pointerEvents = teamsGenerateScheduleBtn.disabled ? "none" : "auto";
+      teamsGenerateScheduleBtn.style.opacity = teamsGenerateScheduleBtn.disabled ? "0.6" : "1";
+    }
+  updateBottomNavState();
+  }
+
+  // ----------------------------
+  // Create / Load tournament flows
+  // ----------------------------
+  function createTournament(name) {
+    const id = uid();
+    tournament = {
+      id,
+      name,
+      type: '',
+      fixtureType: '',
+      matchType: '',
+      playoffFormat: 'Semifinals',
+      teamsCount: 0,
+      groupsCount: 0,
+      teamsPerGroup: 0,
+      players: [],
+      teams: [],
+      teamPlayers: {},
+      groupAssignments: [],
+      matches: [],
+      finalMatch: null,
+      finalResult: null,
+    };
+    tournamentEntryMode = 'create';
+    upsertTournamentIndex(tournament);
+    saveTournament();
+  }
+
+  function loadTournament(id) {
+    const t = loadTournamentById(id);
+    if (!t) return;
+    tournament = {
+      groupAssignments: [],
+      ...t,
+    };
+    tournamentEntryMode = 'load';
+    localStorage.setItem(STORAGE_KEYS.activeTournamentId, id);
+  }
+
+  function bindTournamentToUI() {
+    if (!tournament) return;
+    currentTournamentNameEl.textContent = tournament.name;
+
+    tournamentTypeSelect.value = tournament.type || '';
+    fixtureTypeSelect.value = tournament.fixtureType || '';
+    matchTypeSelect.value = tournament.matchType || '';
+    playoffFormatSelect.value = tournament.playoffFormat || 'Semifinals';
+    teamsCountInput.value = tournament.teamsCount || '';
+    groupsCountInput.value = tournament.groupsCount || '';
+    teamsPerGroupInput.value = tournament.teamsPerGroup || '';
+
+    groupsConfig.classList.toggle('hidden', tournamentTypeSelect.value !== 'Groups');
+
+    // Keep screens in sync with loaded tournament
+    clearOutputs();
+    renderPlayersList();
+    renderTeamsPreview();
+    updateGenerateScheduleBtn();
+    savePlayerListBtn.disabled = (tournament.players || []).length === 0;
+    updateBuildTeamsBtn();
+    updateBottomNavState();
+  }
+
+  // ----------------------------
+  // Event wiring
+  // ----------------------------
+  newTournamentNameInput.addEventListener('input', () => {
+    // Create Tournament is always enabled now (no conditional gating)
+    createTournamentBtn.disabled = false;
+  });
+
+  createTournamentBtn.addEventListener('click', () => {
+    const name = newTournamentNameInput.value.trim();
+    if (!name) return;
+    createTournament(name);
+    newTournamentNameInput.value = '';
+    createTournamentBtn.disabled = true;
+    bindTournamentToUI();
+    setView('tournament');
+  });
+
+  loadTournamentSelect.addEventListener('change', () => {
+    loadTournamentBtn.disabled = !loadTournamentSelect.value;
+    deleteTournamentBtn.disabled = !loadTournamentSelect.value;
+    if (loadTournamentSelect.value) {
+      loadTournament(loadTournamentSelect.value);
+      bindTournamentToUI();
+      setView('tournament');
+    }
+  });
+
+  loadTournamentBtn.addEventListener('click', () => {
+    if (!loadTournamentSelect.value) return;
+    loadTournament(loadTournamentSelect.value);
+    bindTournamentToUI();
+    setView('tournament');
+  });
+
+  deleteTournamentBtn.addEventListener('click', () => {
+    const id = loadTournamentSelect.value;
+    if (!id) return;
+    const ok = confirm('Delete this tournament? This cannot be undone.');
+    if (!ok) return;
+    deleteTournamentById(id);
+    refreshHomeDropdowns();
+  });
+
+  closeTournamentBtn.addEventListener('click', () => {
+    tournament = null;
+    tournamentEntryMode = null;
+    localStorage.removeItem(STORAGE_KEYS.activeTournamentId);
+    localStorage.setItem(STORAGE_KEYS.activeView, 'tournament');
+    currentTournamentNameEl.textContent = '-';
+    if (tournamentSetupPanel) {
+      tournamentSetupPanel.classList.add('hidden');
+      tournamentSetupPanel.hidden = true;
+    }
+    tournamentTypeSelect.value = '';
+    fixtureTypeSelect.value = '';
+    matchTypeSelect.value = '';
+    teamsCountInput.value = '';
+    groupsCountInput.value = '';
+    teamsPerGroupInput.value = '';
+    groupsConfig.classList.add('hidden');
+    clearOutputs();
+    renderPlayersList();
+    renderTeamsPreview();
+    updateGenerateScheduleBtn();
+    updateBuildTeamsBtn();
+    refreshHomeDropdowns();
+    updateBottomNavState();
+    setView('tournament');
+  });
+
+  resetTournamentBtn.addEventListener('click', () => {
+    if (!tournament) return;
+    const ok = confirm('Reset tournament data (matches, scores, final match)? Teams and config will remain.');
+    if (!ok) return;
+    tournament.matches = [];
+    tournament.finalMatch = null;
+    tournament.finalResult = null;
+    saveTournamentAndRefresh();
+    clearOutputs();
+    updateBottomNavState();
+  });
+
+  tournamentTypeSelect.addEventListener('change', () => {
+    if (!tournament) return;
+    tournament.type = tournamentTypeSelect.value;
+    groupsConfig.classList.toggle('hidden', tournament.type !== 'Groups');
+    saveTournamentAndRefresh();
+    updateGenerateScheduleBtn();
+  });
+
+  groupsCountInput.addEventListener('input', () => {
+    if (!tournament) return;
+    tournament.groupsCount = parseInt(groupsCountInput.value || '0', 10);
+    saveTournamentAndRefresh();
+    updateGenerateScheduleBtn();
+  });
+
+  teamsPerGroupInput.addEventListener('input', () => {
+    if (!tournament) return;
+    tournament.teamsPerGroup = parseInt(teamsPerGroupInput.value || '0', 10);
+    saveTournamentAndRefresh();
+    updateGenerateScheduleBtn();
+  });
+
+  fixtureTypeSelect.addEventListener('change', () => {
+    if (!tournament) return;
+    tournament.fixtureType = fixtureTypeSelect.value;
+    saveTournamentAndRefresh();
+    updateGenerateScheduleBtn();
+  });
+
+  playoffFormatSelect.addEventListener('change', () => {
+    if (!tournament) return;
+    tournament.playoffFormat = playoffFormatSelect.value;
+    saveTournamentAndRefresh();
+    recalcAndRender();
+  });
+
+  playerListSelect.addEventListener('change', () => {
+    loadPlayerListBtn.disabled = !playerListSelect.value;
+  });
+
+  loadPlayerListBtn.addEventListener('click', () => {
+    const pl = loadPlayerList(playerListSelect.value);
+    if (!pl) return;
+    setActivePlayersList(pl.players || []);
+    renderPlayersList();
+    updateSavePlayerListBtnState();
+    if (tournament) {
+      tournament.teams = [];
+      tournament.teamPlayers = {};
+      renderTeamsPreview();
+      updateBuildTeamsBtn();
+      updateGenerateScheduleBtn();
+      saveTournamentAndRefresh();
+    }
+  });
+
+  savePlayerListBtn.addEventListener('click', () => {
+    const players = getActivePlayersList();
+    if (!players || players.length === 0) return;
+    const defaultName = tournament ? `Players - ${tournament.name}` : 'Draft Players';
+    const name = prompt('Save player list name:', defaultName);
+    if (!name) return;
+    if (!validatePlayersUniquenessForList(players)) {
+      alert('Please ensure all players are filled and unique before saving.');
+      return;
+    }
+    upsertPlayerList(name, players);
+    refreshHomeDropdowns();
+    alert('Player list saved.');
+  });
+
+  newPlayerNameInput.addEventListener('input', () => {
+    addPlayerBtn.disabled = !newPlayerNameInput.value.trim();
+  });
+
+  addPlayerBtn.addEventListener('click', () => {
+    const name = normalizePlayerName(newPlayerNameInput.value);
+    if (!name) return;
+    const players = getActivePlayersList();
+    if (players.some(p => lower(p) === lower(name))) {
+      alert('Player already exists.');
+      return;
+    }
+    players.push(name);
+    setActivePlayersList(players);
+    newPlayerNameInput.value = '';
+    addPlayerBtn.disabled = true;
+    updateSavePlayerListBtnState();
+    renderPlayersList();
+    if (tournament) {
+      tournament.teams = [];
+      tournament.teamPlayers = {};
+      renderTeamsPreview();
+      updateBuildTeamsBtn();
+      updateGenerateScheduleBtn();
+      saveTournamentAndRefresh();
+    }
+  });
+
+  bulkPlayersInput.addEventListener('input', () => {
+    bulkAddPlayersBtn.disabled = !bulkPlayersInput.value.trim();
+  });
+
+  bulkAddPlayersBtn.addEventListener('click', () => {
+    const names = splitPlayerNames(bulkPlayersInput.value);
+    if (!names.length) return;
+
+    const players = getActivePlayersList();
+    const existing = new Set(players.map(p => lower(normalizePlayerName(p))));
+    const toAdd = [];
+    names.forEach(n => {
+      const key = lower(n);
+      if (!existing.has(key)) {
+        existing.add(key);
+        toAdd.push(n);
+      }
+    });
+
+    if (toAdd.length === 0) {
+      alert('No new players to add (all were duplicates).');
+      return;
+    }
+
+    players.push(...toAdd);
+    setActivePlayersList(players);
+    bulkPlayersInput.value = '';
+    bulkAddPlayersBtn.disabled = true;
+    updateSavePlayerListBtnState();
+    renderPlayersList();
+    if (tournament) {
+      tournament.teams = [];
+      tournament.teamPlayers = {};
+      renderTeamsPreview();
+      updateBuildTeamsBtn();
+      updateGenerateScheduleBtn();
+      saveTournamentAndRefresh();
+    }
+  });
+
+  matchTypeSelect.addEventListener('change', () => {
+    if (!buildTeamsBtn || !tournament) return;
+    tournament.matchType = matchTypeSelect.value;
+    // reset teams mapping
+    tournament.teams = [];
+    tournament.teamPlayers = {};
+    saveTournamentAndRefresh();
+    renderTeamsPreview();
+    updateBuildTeamsBtn();
+    updateGenerateScheduleBtn();
+  });
+
+  teamsCountInput.addEventListener('input', () => {
+    if (!buildTeamsBtn || !tournament) return;
+    tournament.teamsCount = parseInt(teamsCountInput.value || '0', 10);
+    // reset teams mapping
+    tournament.teams = [];
+    tournament.teamPlayers = {};
+    saveTournamentAndRefresh();
+    renderTeamsPreview();
+    updateBuildTeamsBtn();
+    updateGenerateScheduleBtn();
+  });
+
+  if (buildTeamsBtn) {
+  buildTeamsBtn.addEventListener('click', () => {
+    if (!tournament) return;
+    const teamsCount = parseInt(teamsCountInput.value, 10);
+    const req = requiredPlayersPerTeam();
+    if (!Number.isFinite(teamsCount) || teamsCount < 2) {
+      alert('Please enter a valid number of teams (min 2).');
+      return;
+    }
+    if (req === 0) {
+      alert('Please select Singles or Doubles.');
+      return;
+    }
+
+    const teams = [];
+    const teamPlayers = {};
+    // Create empty assignments; user will pick players from dropdowns.
+    const empty = new Array(req).fill('');
+    for (let i = 1; i <= teamsCount; i++) {
+      const teamName = `Team ${i}`;
+      teams.push(teamName);
+      teamPlayers[teamName] = [...empty];
+    }
+
+    if ((!tournament.players || tournament.players.length === 0)) {
+      const fallbackPlayers = getPlayersForTeamAssignment();
+      if (fallbackPlayers.length > 0) {
+        tournament.players = [...fallbackPlayers];
+      }
+    }
+
+    tournament.teams = teams;
+    tournament.teamPlayers = teamPlayers;
+
+    // Reset any existing schedule because teams changed
+    tournament.matches = [];
+    tournament.finalMatch = null;
+    tournament.finalResult = null;
+
+    clearOutputs();
+    updateBottomNavState();
+
+    saveTournamentAndRefresh();
+    renderTeamsPreview();
+    updateGenerateScheduleBtn();
+  });
+  }
+
+  function generateScheduleFromCurrentTournament() {
+    if (!tournament) return;
+    if (!tournament.teams || tournament.teams.length < 2) {
+      alert('Please build teams first.');
+      return;
+    }
+
+    // reset
+    matchIdCounter = 1;
+    tournament.matches = [];
+    tournament.finalMatch = null;
+    tournament.finalResult = null;
+    tournament.groupAssignments = [];
+
+    if (tournament.type === 'League') {
+      tournament.matches = buildLeagueMatches(tournament.teams, tournament.fixtureType);
+    } else if (tournament.type === 'Groups') {
+      const gc = parseInt(groupsCountInput.value, 10);
+      const tpg = parseInt(teamsPerGroupInput.value, 10);
+      const groups = partitionIntoGroups(tournament.teams, gc, tpg);
+      tournament.groupAssignments = groups;
+      tournament.matches = buildGroupMatches(groups, tournament.fixtureType);
+    } else {
+      alert('Select tournament type.');
+      return;
+    }
+
+    saveTournamentAndRefresh();
+    renderSchedule(tournament.matches);
+    recalcAndRender();
+    updateBottomNavState();
+    setView('schedule');
+  }
+
+  generateScheduleBtn.addEventListener('click', generateScheduleFromCurrentTournament);
+  if (teamsGenerateScheduleBtn) {
+    teamsGenerateScheduleBtn.addEventListener('click', generateScheduleFromCurrentTournament);
+  }
+
+  function renderKnockoutBracket(knockout, playoffFormat) {
+    playoffBracketOutput.innerHTML = '';
+    if (!knockout) {
+      playoffBracketOutput.innerHTML = '<div class="hint">No playoff bracket available.</div>';
+      return;
+    }
+
+    const container = document.createElement('div');
+    container.className = 'knockoutMatches';
+
+    const renderMatchCard = (match) => {
+      const card = document.createElement('div');
+      card.className = 'knockoutCard';
+
+      const header = document.createElement('div');
+      header.className = 'knockoutHeader';
+      header.textContent = match.stage;
+      card.appendChild(header);
+
+      const row1 = document.createElement('div');
+      row1.className = 'knockoutTeamRow';
+      const team1 = document.createElement('span');
+      team1.textContent = match.team1 ? getTeamDisplayName(match.team1) : '-';
+      const score1 = document.createElement('input');
+      score1.type = 'number';
+      score1.style.width = '70px';
+      score1.min = 0;
+      score1.value = match.score1 ?? '';
+      const updateScore1 = () => {
+        match.score1 = score1.value === '' ? null : Number(score1.value);
+      };
+      score1.addEventListener('input', updateScore1);
+      score1.addEventListener('change', () => {
+        updateScore1();
+        recalcAndRender();
+      });
+      row1.appendChild(team1);
+      row1.appendChild(score1);
+      card.appendChild(row1);
+
+      const row2 = document.createElement('div');
+      row2.className = 'knockoutTeamRow';
+      const team2 = document.createElement('span');
+      team2.textContent = match.team2 ? getTeamDisplayName(match.team2) : '-';
+      const score2 = document.createElement('input');
+      score2.type = 'number';
+      score2.style.width = '70px';
+      score2.min = 0;
+      score2.value = match.score2 ?? '';
+      const updateScore2 = () => {
+        match.score2 = score2.value === '' ? null : Number(score2.value);
+      };
+      score2.addEventListener('input', updateScore2);
+      score2.addEventListener('change', () => {
+        updateScore2();
+        recalcAndRender();
+      });
+      row2.appendChild(team2);
+      row2.appendChild(score2);
+      card.appendChild(row2);
+
+      container.appendChild(card);
+    };
+
+    if (playoffFormat === 'Semifinals') {
+      renderMatchCard(knockout.semifinal1);
+      renderMatchCard(knockout.semifinal2);
+    } else if (playoffFormat === 'Final') {
+      const hint = document.createElement('div');
+      hint.className = 'hint';
+      hint.textContent = 'Direct final format selected: the top two teams from the points table play the championship match.';
+      playoffBracketOutput.appendChild(hint);
+    } else {
+      renderMatchCard(knockout.qualifier1);
+      renderMatchCard(knockout.eliminator);
+      renderMatchCard(knockout.qualifier2);
+    }
+
+    playoffBracketOutput.appendChild(container);
+
+    renderFinalMatch(tournament.finalMatch);
+  }
+
+  // ----------------------------
+  // Init
+  // ----------------------------
+  refreshHomeDropdowns();
+  renderPlayersList();
+  if (bottomNav) {
+    bottomNavButtons().forEach(btn => {
+      btn.addEventListener('click', () => setView(btn.dataset.view));
+    });
+  }
+  const activeTournamentId = localStorage.getItem(STORAGE_KEYS.activeTournamentId);
+  if (activeTournamentId && loadTournamentById(activeTournamentId)) {
+    loadTournament(activeTournamentId);
+    bindTournamentToUI();
+    if (Array.isArray(tournament?.matches) && tournament.matches.length > 0) {
+      recalcAndRender();
+    }
+  }
+  updateBottomNavState();
+  const savedView = localStorage.getItem(STORAGE_KEYS.activeView) || 'tournament';
+  setView(savedView);
+
+  // Dev-friendly: surface errors clearly while still being a single-file HTML app
+  window.addEventListener('error', (e) => {
+    console.error('Unhandled error:', e.error || e.message);
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    console.error('Unhandled promise rejection:', e.reason);
+  });
+</script>
+
+</body>
+</html>

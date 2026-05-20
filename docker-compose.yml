@@ -1,0 +1,58 @@
+services:
+  web:
+    image: nginx:1.27-alpine
+    container_name: badminton-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./tournament.html:/usr/share/nginx/html/index.html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+
+  api:
+    image: postgrest/postgrest:v12.2.3
+    container_name: badminton-api
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: postgres://authenticator:authenticator_password@db:5432/badminton
+      PGRST_DB_SCHEMAS: api
+      PGRST_DB_ANON_ROLE: web_anon
+      PGRST_SERVER_PORT: 3000
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    container_name: badminton-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: badminton
+      POSTGRES_USER: badminton
+      POSTGRES_PASSWORD: badminton_password
+    volumes:
+      - badminton-db-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U badminton -d badminton"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ngrok:
+    image: ngrok/ngrok:alpine
+    container_name: badminton-ngrok
+    restart: unless-stopped
+    profiles:
+      - online
+    network_mode: host
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    command: http http://127.0.0.1:8080 --log=stdout --log-level=info
+    depends_on:
+      - web
+
+volumes:
+  badminton-db-data:
