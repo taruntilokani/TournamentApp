@@ -797,42 +797,7 @@
   </div>
 </div>
 
-<div class="section featureView adminOnly hidden" id="usersAdminSection" role="tabpanel" aria-labelledby="tabUsers">
-  <div class="row" style="justify-content: space-between; align-items: flex-start;">
-    <div>
-      <h3 style="margin-top:0">Users</h3>
-      <div class="hint">Create users, issue temporary passwords, and force first-login password resets.</div>
-    </div>
-    <button id="logoutBtn" class="secondary">Logout</button>
-  </div>
 
-  <div class="row">
-    <div class="col">
-      <label for="newUserUsername">Username</label>
-      <input id="newUserUsername" type="text" placeholder="e.g., scorer1" />
-    </div>
-    <div class="col">
-      <label for="newUserDisplayName">Display Name</label>
-      <input id="newUserDisplayName" type="text" placeholder="e.g., Court Scorer" />
-    </div>
-  </div>
-  <div class="row">
-    <div class="col">
-      <label for="newUserPassword">Temporary Password</label>
-      <input id="newUserPassword" type="text" placeholder="At least 8 characters" />
-    </div>
-    <div class="col">
-      <label for="newUserIsAdmin">Admin</label>
-      <select id="newUserIsAdmin">
-        <option value="false">No</option>
-        <option value="true">Yes</option>
-      </select>
-    </div>
-  </div>
-  <button id="createUserBtn">Create User</button>
-  <div id="createUserStatus" class="authStatus"></div>
-  <div id="usersList" style="margin-top:14px"></div>
-</div>
 
 <!-- Top tab bar (centered feature navigation) -->
 <div class="bottomNav" id="bottomNav" role="tablist" aria-label="Tournament features">
@@ -1011,6 +976,43 @@
   <div id="playoffBracketOutput"></div>
   <h3>Championship Match</h3>
   <div id="finalMatchOutput"></div>
+</div>
+
+<div class="section featureView adminOnly hidden" id="usersAdminSection" role="tabpanel" aria-labelledby="tabUsers">
+  <div class="row" style="justify-content: space-between; align-items: flex-start;">
+    <div>
+      <h3 style="margin-top:0">Users</h3>
+      <div class="hint">Create users, issue temporary passwords, and force first-login password resets.</div>
+    </div>
+    <button id="logoutBtn" class="secondary">Logout</button>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <label for="newUserUsername">Username</label>
+      <input id="newUserUsername" type="text" placeholder="e.g., scorer1" />
+    </div>
+    <div class="col">
+      <label for="newUserDisplayName">Display Name</label>
+      <input id="newUserDisplayName" type="text" placeholder="e.g., Court Scorer" />
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <label for="newUserPassword">Temporary Password</label>
+      <input id="newUserPassword" type="text" placeholder="At least 8 characters" />
+    </div>
+    <div class="col">
+      <label for="newUserIsAdmin">Admin</label>
+      <select id="newUserIsAdmin">
+        <option value="false">No</option>
+        <option value="true">Yes</option>
+      </select>
+    </div>
+  </div>
+  <button id="createUserBtn">Create User</button>
+  <div id="createUserStatus" class="authStatus"></div>
+  <div id="usersList" style="margin-top:14px"></div>
 </div>
 
 <!-- Leaderboard tab -->
