@@ -38,6 +38,31 @@ Validate API/database access:
 curl http://localhost:8080/api/app_storage
 ```
 
+
+## Normalized Database Tables
+
+The frontend still uses the original browser-friendly storage keys, but PostgreSQL now decomposes tournament and player-list JSON into real relational tables through triggers on `api.app_storage`. This keeps the current UI stable while making reporting and future API work much cleaner.
+
+Normalized tables exposed through PostgREST:
+
+- `api.tournaments`
+- `api.tournament_players`
+- `api.teams`
+- `api.team_players`
+- `api.matches`
+- `api.player_lists`
+- `api.player_list_players`
+
+Useful API examples:
+
+```bash
+curl http://localhost:8080/api/tournaments
+curl http://localhost:8080/api/team_players
+curl http://localhost:8080/api/matches
+```
+
+The compatibility table remains available at `api.app_storage` so the existing frontend can continue to save and load without a full rewrite.
+
 ## Expose Online With ngrok
 
 Create `.env` in `/home/devops/badminton-runtime` and set your ngrok token:
@@ -73,5 +98,3 @@ This keeps the database volume. To delete all saved data too:
 sudo -n docker compose down -v
 ```
 
-# TournamentApp
-# TournamentApp
