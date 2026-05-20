@@ -42,37 +42,37 @@ curl http://localhost:8080/api/app_storage
 
 ## Login / Admin Access
 
-Nginx protects the whole app and API with HTTP Basic Auth. The real password file is `.htpasswd`, which is intentionally ignored by Git.
+The app now uses Postgres-backed user accounts and sessions. The login page is served by the app; the old Nginx Basic Auth gate is no longer used.
 
-Create or rotate the admin password on the host/runtime folder:
-
-```bash
-cd /home/devops/badminton-runtime
-openssl passwd -apr1
-# paste the generated hash after admin: in .htpasswd
-```
-
-Example `.htpasswd` format:
+Seeded admin account for this machine:
 
 ```text
-admin:$apr1$...generated_hash...
+Username: admin
+Password: TournamentApp2026
 ```
 
-After changing `.htpasswd`, reload the web container:
+Admins can create users from the in-app **Users** section. New users receive a temporary password and are forced to reset it on their first login before they can access the tournament screens.
+
+Auth-related RPCs exposed through PostgREST:
 
 ```bash
-sudo -n docker compose up -d --force-recreate web
+# Login
+curl -X POST http://localhost:8080/api/rpc/login_user \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"TournamentApp2026"}'
+
+# List users with an admin session token
+curl -X POST http://localhost:8080/api/rpc/list_users \
+  -H 'Content-Type: application/json' \
+  -d '{"auth_token":"TOKEN"}'
+
+# Create a user with first-login password reset required
+curl -X POST http://localhost:8080/api/rpc/create_user \
+  -H 'Content-Type: application/json' \
+  -d '{"auth_token":"TOKEN","username":"scorer1","display_name":"Court Scorer","temporary_password":"TempPass2026","is_admin":false}'
 ```
 
-Validation examples:
-
-```bash
-# should return 401
-curl -I http://localhost:8080/
-
-# should return 200
-curl -u admin:YOUR_PASSWORD http://localhost:8080/
-```
+Direct table endpoints are not granted to anonymous users; app data flows through token-protected RPCs.
 
 ## Normalized Database Tables
 
@@ -91,9 +91,8 @@ Normalized tables exposed through PostgREST:
 Useful API examples:
 
 ```bash
-curl http://localhost:8080/api/tournaments
-curl http://localhost:8080/api/team_players
-curl http://localhost:8080/api/matches
+# direct table endpoints are blocked without RPC/session access
+curl -X POST http://localhost:8080/api/rpc/export_app_state -H 'Content-Type: application/json' -d '{"auth_token":"TOKEN"}'
 ```
 
 The compatibility table remains available at `api.app_storage` for small UI-only keys such as active tab or local draft state. Tournament and player-list reads/writes now use normalized RPC endpoints.
@@ -102,17 +101,17 @@ Normalized write/read RPCs:
 
 ```bash
 # Rebuild browser app state from normalized tables
-curl http://localhost:8080/api/rpc/export_app_state
+curl -X POST http://localhost:8080/api/rpc/export_app_state -H 'Content-Type: application/json' -d '{"auth_token":"TOKEN"}'
 
 # Save a tournament payload into normalized tables
 curl -X POST http://localhost:8080/api/rpc/save_tournament \
   -H 'Content-Type: application/json' \
-  -d '{"payload": {"id": "example", "name": "Example Tournament"}}'
+  -d '{"auth_token":"TOKEN","payload": {"id": "example", "name": "Example Tournament"}}'
 
 # Delete a tournament
 curl -X POST http://localhost:8080/api/rpc/delete_tournament \
   -H 'Content-Type: application/json' \
-  -d '{"tournament_id": "example"}'
+  -d '{"auth_token":"TOKEN","tournament_id": "example"}'
 ```
 
 ## Expose Online With ngrok

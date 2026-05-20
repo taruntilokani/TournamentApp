@@ -608,3 +608,493 @@ GRANT EXECUTE ON FUNCTION
   api.delete_player_list(TEXT),
   api.export_app_state()
 TO web_anon;
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS api.app_users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username TEXT NOT NULL UNIQUE CHECK (username = lower(username)),
+  display_name TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+  must_reset_password BOOLEAN NOT NULL DEFAULT TRUE,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS api.app_sessions (
+  token TEXT PRIMARY KEY DEFAULT encode(gen_random_bytes(32), 'hex'),
+  user_id UUID NOT NULL REFERENCES api.app_users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days'
+);
+
+DROP TRIGGER IF EXISTS app_users_touch_updated_at ON api.app_users;
+CREATE TRIGGER app_users_touch_updated_at
+BEFORE UPDATE ON api.app_users
+FOR EACH ROW
+EXECUTE FUNCTION api.touch_updated_at();
+
+INSERT INTO api.app_users (username, display_name, password_hash, is_admin, must_reset_password, is_active)
+VALUES ('admin', 'Administrator', crypt('TournamentApp2026', gen_salt('bf')), TRUE, FALSE, TRUE)
+ON CONFLICT (username) DO NOTHING;
+
+CREATE OR REPLACE FUNCTION api.current_user_from_token(auth_token TEXT)
+RETURNS api.app_users
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT u.*
+  FROM api.app_sessions s
+  JOIN api.app_users u ON u.id = s.user_id
+  WHERE s.token = auth_token
+    AND s.expires_at > NOW()
+    AND u.is_active = TRUE
+  LIMIT 1;
+$$;
+
+CREATE OR REPLACE FUNCTION api.require_active_user(auth_token TEXT)
+RETURNS api.app_users
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+  current_user_row api.app_users;
+BEGIN
+  SELECT * INTO current_user_row FROM api.current_user_from_token(auth_token);
+  IF current_user_row.id IS NULL THEN
+    RAISE EXCEPTION 'Invalid or expired session' USING ERRCODE = '28000';
+  END IF;
+  RETURN current_user_row;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION api.require_admin_user(auth_token TEXT)
+RETURNS api.app_users
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+  current_user_row api.app_users;
+BEGIN
+  current_user_row := api.require_active_user(auth_token);
+  IF current_user_row.is_admin IS DISTINCT FROM TRUE THEN
+    RAISE EXCEPTION 'Admin access required' USING ERRCODE = '42501';
+  END IF;
+  RETURN current_user_row;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION api.login_user(username TEXT, password TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  user_row api.app_users;
+  session_token TEXT;
+BEGIN
+  SELECT * INTO user_row
+  FROM api.app_users u
+  WHERE u.username = lower(login_user.username)
+    AND u.is_active = TRUE;
+
+  IF user_row.id IS NULL OR user_row.password_hash <> crypt(password, user_row.password_hash) THEN
+    RAISE EXCEPTION 'Invalid username or password' USING ERRCODE = '28000';
+  END IF;
+
+  DELETE FROM api.app_sessions WHERE expires_at <= NOW();
+
+  INSERT INTO api.app_sessions (user_id)
+  VALUES (user_row.id)
+  RETURNING token INTO session_token;
+
+  RETURN jsonb_build_object(
+    'token', session_token,
+    'username', user_row.username,
+    'displayName', user_row.display_name,
+    'isAdmin', user_row.is_admin,
+    'mustResetPassword', user_row.must_reset_password
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION api.logout_user(auth_token TEXT)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  DELETE FROM api.app_sessions WHERE token = auth_token;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION api.change_my_password(auth_token TEXT, current_password TEXT, new_password TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  user_row api.app_users;
+BEGIN
+  user_row := api.require_active_user(auth_token);
+
+  IF length(COALESCE(new_password, '')) < 8 THEN
+    RAISE EXCEPTION 'New password must be at least 8 characters' USING ERRCODE = '22023';
+  END IF;
+
+  IF user_row.password_hash <> crypt(current_password, user_row.password_hash) THEN
+    RAISE EXCEPTION 'Current password is incorrect' USING ERRCODE = '28000';
+  END IF;
+
+  UPDATE api.app_users
+  SET password_hash = crypt(new_password, gen_salt('bf')),
+      must_reset_password = FALSE
+  WHERE id = user_row.id;
+
+  RETURN jsonb_build_object('ok', TRUE);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION api.list_users(auth_token TEXT)
+RETURNS TABLE (
+  username TEXT,
+  display_name TEXT,
+  is_admin BOOLEAN,
+  must_reset_password BOOLEAN,
+  is_active BOOLEAN,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+STABLE
+AS $$
+BEGIN
+  PERFORM api.require_admin_user(auth_token);
+
+  RETURN QUERY
+  SELECT u.username, u.display_name, u.is_admin, u.must_reset_password, u.is_active, u.created_at, u.updated_at
+  FROM api.app_users u
+  ORDER BY u.username;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION api.create_user(auth_token TEXT, username TEXT, display_name TEXT, temporary_password TEXT, is_admin BOOLEAN DEFAULT FALSE)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  normalized_username TEXT;
+BEGIN
+  PERFORM api.require_admin_user(auth_token);
+
+  normalized_username := lower(trim(username));
+  IF normalized_username = '' OR normalized_username IS NULL THEN
+    RAISE EXCEPTION 'Username is required' USING ERRCODE = '22023';
+  END IF;
+  IF length(COALESCE(temporary_password, '')) < 8 THEN
+    RAISE EXCEPTION 'Temporary password must be at least 8 characters' USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO api.app_users (username, display_name, password_hash, is_admin, must_reset_password, is_active)
+  VALUES (
+    normalized_username,
+    COALESCE(NULLIF(trim(display_name), ''), normalized_username),
+    crypt(temporary_password, gen_salt('bf')),
+    COALESCE(is_admin, FALSE),
+    TRUE,
+    TRUE
+  );
+
+  RETURN jsonb_build_object('ok', TRUE, 'username', normalized_username);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION api.reset_user_password(auth_token TEXT, username TEXT, temporary_password TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  normalized_username TEXT;
+BEGIN
+  PERFORM api.require_admin_user(auth_token);
+
+  normalized_username := lower(trim(username));
+  IF length(COALESCE(temporary_password, '')) < 8 THEN
+    RAISE EXCEPTION 'Temporary password must be at least 8 characters' USING ERRCODE = '22023';
+  END IF;
+
+  UPDATE api.app_users
+  SET password_hash = crypt(temporary_password, gen_salt('bf')),
+      must_reset_password = TRUE
+  WHERE app_users.username = normalized_username;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'User not found' USING ERRCODE = '02000';
+  END IF;
+
+  RETURN jsonb_build_object('ok', TRUE, 'username', normalized_username);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION api.set_user_active(auth_token TEXT, username TEXT, is_active BOOLEAN)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  admin_row api.app_users;
+  normalized_username TEXT;
+BEGIN
+  admin_row := api.require_admin_user(auth_token);
+  normalized_username := lower(trim(username));
+
+  IF normalized_username = admin_row.username AND is_active IS FALSE THEN
+    RAISE EXCEPTION 'You cannot disable your own account' USING ERRCODE = '42501';
+  END IF;
+
+  UPDATE api.app_users u
+  SET is_active = set_user_active.is_active
+  WHERE u.username = normalized_username;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'User not found' USING ERRCODE = '02000';
+  END IF;
+
+  RETURN jsonb_build_object('ok', TRUE, 'username', normalized_username, 'isActive', is_active);
+END;
+$$;
+
+DROP FUNCTION IF EXISTS api.save_tournament(JSONB);
+CREATE OR REPLACE FUNCTION api.save_tournament(auth_token TEXT, payload JSONB)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  PERFORM api.require_active_user(auth_token);
+  PERFORM api.sync_app_storage_row('bt_tournament_v1_' || (payload->>'id'), payload::TEXT);
+END;
+$$;
+
+DROP FUNCTION IF EXISTS api.delete_tournament(TEXT);
+CREATE OR REPLACE FUNCTION api.delete_tournament(auth_token TEXT, tournament_id TEXT)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  PERFORM api.require_active_user(auth_token);
+  DELETE FROM api.tournaments WHERE id = tournament_id;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS api.save_player_list(TEXT, JSONB);
+CREATE OR REPLACE FUNCTION api.save_player_list(auth_token TEXT, storage_key TEXT, payload JSONB)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  PERFORM api.require_active_user(auth_token);
+  PERFORM api.sync_app_storage_row(storage_key, payload::TEXT);
+END;
+$$;
+
+DROP FUNCTION IF EXISTS api.delete_player_list(TEXT);
+CREATE OR REPLACE FUNCTION api.delete_player_list(auth_token TEXT, player_list_id TEXT)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  PERFORM api.require_active_user(auth_token);
+  DELETE FROM api.player_lists WHERE id = player_list_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION api.export_app_state(auth_token TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+  result JSONB;
+BEGIN
+  PERFORM api.require_active_user(auth_token);
+
+  WITH tournament_payloads AS (
+    SELECT
+      'bt_tournament_v1_' || t.id AS key,
+      jsonb_build_object(
+        'id', t.id,
+        'name', t.name,
+        'type', COALESCE(t.type, ''),
+        'fixtureType', COALESCE(t.fixture_type, ''),
+        'matchType', COALESCE(t.match_type, ''),
+        'playoffFormat', COALESCE(t.playoff_format, 'Semifinals'),
+        'teamsCount', t.teams_count,
+        'groupsCount', t.groups_count,
+        'teamsPerGroup', t.teams_per_group,
+        'players', COALESCE((SELECT jsonb_agg(tp.player_name ORDER BY tp.player_order) FROM api.tournament_players tp WHERE tp.tournament_id = t.id), '[]'::JSONB),
+        'teams', COALESCE((SELECT jsonb_agg(tm.team_name ORDER BY tm.team_order) FROM api.teams tm WHERE tm.tournament_id = t.id), '[]'::JSONB),
+        'teamPlayers', COALESCE((
+          SELECT jsonb_object_agg(team_name, players ORDER BY team_order)
+          FROM (
+            SELECT tm.team_name, tm.team_order, COALESCE(jsonb_agg(tp.player_name ORDER BY tp.player_order) FILTER (WHERE tp.player_name IS NOT NULL), '[]'::JSONB) AS players
+            FROM api.teams tm
+            LEFT JOIN api.team_players tp ON tp.tournament_id = tm.tournament_id AND tp.team_name = tm.team_name
+            WHERE tm.tournament_id = t.id
+            GROUP BY tm.team_name, tm.team_order
+          ) team_payload
+        ), '{}'::JSONB),
+        'groupAssignments', COALESCE(t.group_assignments, '[]'::JSONB),
+        'matches', COALESCE((
+          SELECT jsonb_agg(jsonb_build_object(
+            'id', CASE WHEN m.match_id ~ '^\d+$' THEN to_jsonb(m.match_id::INTEGER) ELSE to_jsonb(m.match_id) END,
+            'team1', m.team1,
+            'team2', m.team2,
+            'score1', m.score1,
+            'score2', m.score2,
+            'stage', m.stage,
+            'groupIndex', m.group_index
+          ) ORDER BY CASE WHEN m.match_id ~ '^\d+$' THEN m.match_id::INTEGER ELSE 2147483647 END, m.match_id)
+          FROM api.matches m
+          WHERE m.tournament_id = t.id
+        ), '[]'::JSONB),
+        'knockout', jsonb_build_object(
+          'semifinal1', COALESCE((SELECT jsonb_build_object('id', km.match_id, 'stage', km.stage, 'team1', km.team1, 'team2', km.team2, 'score1', km.score1, 'score2', km.score2) FROM api.knockout_matches km WHERE km.tournament_id = t.id AND km.match_id = 'SEMIFINAL-1'), jsonb_build_object('id', 'SEMIFINAL-1', 'stage', 'Semifinal 1', 'team1', '', 'team2', '', 'score1', NULL, 'score2', NULL)),
+          'semifinal2', COALESCE((SELECT jsonb_build_object('id', km.match_id, 'stage', km.stage, 'team1', km.team1, 'team2', km.team2, 'score1', km.score1, 'score2', km.score2) FROM api.knockout_matches km WHERE km.tournament_id = t.id AND km.match_id = 'SEMIFINAL-2'), jsonb_build_object('id', 'SEMIFINAL-2', 'stage', 'Semifinal 2', 'team1', '', 'team2', '', 'score1', NULL, 'score2', NULL)),
+          'qualifier1', COALESCE((SELECT jsonb_build_object('id', km.match_id, 'stage', km.stage, 'team1', km.team1, 'team2', km.team2, 'score1', km.score1, 'score2', km.score2) FROM api.knockout_matches km WHERE km.tournament_id = t.id AND km.match_id = 'QUALIFIER-1'), jsonb_build_object('id', 'QUALIFIER-1', 'stage', 'Qualifier 1', 'team1', '', 'team2', '', 'score1', NULL, 'score2', NULL)),
+          'eliminator', COALESCE((SELECT jsonb_build_object('id', km.match_id, 'stage', km.stage, 'team1', km.team1, 'team2', km.team2, 'score1', km.score1, 'score2', km.score2) FROM api.knockout_matches km WHERE km.tournament_id = t.id AND km.match_id = 'ELIMINATOR'), jsonb_build_object('id', 'ELIMINATOR', 'stage', 'Eliminator', 'team1', '', 'team2', '', 'score1', NULL, 'score2', NULL)),
+          'qualifier2', COALESCE((SELECT jsonb_build_object('id', km.match_id, 'stage', km.stage, 'team1', km.team1, 'team2', km.team2, 'score1', km.score1, 'score2', km.score2) FROM api.knockout_matches km WHERE km.tournament_id = t.id AND km.match_id = 'QUALIFIER-2'), jsonb_build_object('id', 'QUALIFIER-2', 'stage', 'Qualifier 2', 'team1', '', 'team2', '', 'score1', NULL, 'score2', NULL)),
+          'final', COALESCE((SELECT jsonb_build_object('id', km.match_id, 'stage', km.stage, 'team1', km.team1, 'team2', km.team2, 'score1', km.score1, 'score2', km.score2) FROM api.knockout_matches km WHERE km.tournament_id = t.id AND km.match_id = 'FINAL'), jsonb_build_object('id', 'FINAL', 'stage', 'Final', 'team1', COALESCE(t.final_team1, ''), 'team2', COALESCE(t.final_team2, ''), 'score1', t.final_score1, 'score2', t.final_score2))
+        ),
+        'finalMatch', CASE WHEN t.final_team1 IS NULL AND t.final_team2 IS NULL THEN NULL ELSE jsonb_build_object('id', 'FINAL', 'team1', t.final_team1, 'team2', t.final_team2, 'score1', t.final_score1, 'score2', t.final_score2, 'stage', 'Final', 'groupIndex', NULL) END,
+        'finalResult', CASE WHEN t.final_winner_team IS NULL THEN NULL ELSE jsonb_build_object('winner', t.final_winner_team, 'runnerUp', t.final_runner_up_team) END
+      )::TEXT AS value
+    FROM api.tournaments t
+  ),
+  player_list_payloads AS (
+    SELECT
+      'bt_playerlist_v1_' || pl.id AS key,
+      jsonb_build_object(
+        'name', pl.name,
+        'players', COALESCE((SELECT jsonb_agg(plp.player_name ORDER BY plp.player_order) FROM api.player_list_players plp WHERE plp.player_list_id = pl.id), '[]'::JSONB)
+      )::TEXT AS value
+    FROM api.player_lists pl
+  ),
+  index_payloads AS (
+    SELECT 'bt_tournaments_index_v1' AS key,
+      COALESCE(jsonb_agg(jsonb_build_object('id', t.id, 'name', t.name, 'createdAt', EXTRACT(EPOCH FROM t.updated_at)::BIGINT * 1000, 'updatedAt', EXTRACT(EPOCH FROM t.updated_at)::BIGINT * 1000) ORDER BY t.updated_at DESC), '[]'::JSONB)::TEXT AS value
+    FROM api.tournaments t
+    UNION ALL
+    SELECT 'bt_playerlists_index_v1' AS key,
+      COALESCE(jsonb_agg(pl.id ORDER BY pl.id), '[]'::JSONB)::TEXT AS value
+    FROM api.player_lists pl
+  ),
+  compat_payloads AS (
+    SELECT key, value
+    FROM api.app_storage
+    WHERE key NOT LIKE 'bt_tournament_v1_%'
+      AND key NOT LIKE 'bt_playerlist_v1_%'
+      AND key NOT IN ('bt_tournaments_index_v1', 'bt_playerlists_index_v1')
+  ),
+  all_payloads AS (
+    SELECT * FROM tournament_payloads
+    UNION ALL SELECT * FROM player_list_payloads
+    UNION ALL SELECT * FROM index_payloads
+    UNION ALL SELECT * FROM compat_payloads
+  )
+  SELECT jsonb_object_agg(key, value) INTO result FROM all_payloads;
+
+  RETURN COALESCE(result, '{}'::JSONB);
+END;
+$$;
+
+GRANT SELECT ON api.app_users TO web_anon;
+GRANT EXECUTE ON FUNCTION
+  api.login_user(TEXT, TEXT),
+  api.logout_user(TEXT),
+  api.change_my_password(TEXT, TEXT, TEXT),
+  api.list_users(TEXT),
+  api.create_user(TEXT, TEXT, TEXT, TEXT, BOOLEAN),
+  api.reset_user_password(TEXT, TEXT, TEXT),
+  api.set_user_active(TEXT, TEXT, BOOLEAN),
+  api.save_tournament(TEXT, JSONB),
+  api.delete_tournament(TEXT, TEXT),
+  api.save_player_list(TEXT, TEXT, JSONB),
+  api.delete_player_list(TEXT, TEXT),
+  api.export_app_state(TEXT)
+TO web_anon;
+
+CREATE OR REPLACE FUNCTION api.save_app_setting(auth_token TEXT, storage_key TEXT, storage_value TEXT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = api, public
+AS $$
+BEGIN
+  PERFORM api.require_active_user(auth_token);
+  INSERT INTO api.app_storage (key, value, updated_at)
+  VALUES (storage_key, storage_value, NOW())
+  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION api.delete_app_setting(auth_token TEXT, storage_key TEXT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = api, public
+AS $$
+BEGIN
+  PERFORM api.require_active_user(auth_token);
+  DELETE FROM api.app_storage WHERE key = storage_key;
+END;
+$$;
+
+ALTER FUNCTION api.current_user_from_token(TEXT) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.require_active_user(TEXT) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.require_admin_user(TEXT) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.login_user(TEXT, TEXT) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.logout_user(TEXT) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.change_my_password(TEXT, TEXT, TEXT) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.list_users(TEXT) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.create_user(TEXT, TEXT, TEXT, TEXT, BOOLEAN) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.reset_user_password(TEXT, TEXT, TEXT) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.set_user_active(TEXT, TEXT, BOOLEAN) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.sync_app_storage_row(TEXT, TEXT) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.sync_app_storage_to_tables() SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.cleanup_app_storage_tables() SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.save_tournament(TEXT, JSONB) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.delete_tournament(TEXT, TEXT) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.save_player_list(TEXT, TEXT, JSONB) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.delete_player_list(TEXT, TEXT) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.export_app_state(TEXT) SECURITY DEFINER SET search_path = api, public;
+
+REVOKE ALL ON
+  api.app_storage,
+  api.tournaments,
+  api.tournament_players,
+  api.teams,
+  api.team_players,
+  api.matches,
+  api.knockout_matches,
+  api.player_lists,
+  api.player_list_players,
+  api.app_users,
+  api.app_sessions
+FROM web_anon;
+
+GRANT EXECUTE ON FUNCTION
+  api.login_user(TEXT, TEXT),
+  api.logout_user(TEXT),
+  api.change_my_password(TEXT, TEXT, TEXT),
+  api.list_users(TEXT),
+  api.create_user(TEXT, TEXT, TEXT, TEXT, BOOLEAN),
+  api.reset_user_password(TEXT, TEXT, TEXT),
+  api.set_user_active(TEXT, TEXT, BOOLEAN),
+  api.save_tournament(TEXT, JSONB),
+  api.delete_tournament(TEXT, TEXT),
+  api.save_player_list(TEXT, TEXT, JSONB),
+  api.delete_player_list(TEXT, TEXT),
+  api.export_app_state(TEXT),
+  api.save_app_setting(TEXT, TEXT, TEXT),
+  api.delete_app_setting(TEXT, TEXT)
+TO web_anon;
+
+DROP FUNCTION IF EXISTS api.export_app_state();

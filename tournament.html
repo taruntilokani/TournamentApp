@@ -145,7 +145,7 @@
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
-    input[type=text], input[type=number], select, textarea {
+    input[type=text], input[type=password], input[type=number], select, textarea {
       width: 100%;
       max-width: 100%;
       padding: 10px 11px;
@@ -159,11 +159,13 @@
       transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
     }
     input[type=text]::placeholder,
+    input[type=password]::placeholder,
     input[type=number]::placeholder,
     textarea::placeholder {
       color: rgba(148, 163, 184, 0.7);
     }
     input[type=text]:focus,
+    input[type=password]:focus,
     input[type=number]:focus,
     select:focus,
     textarea:focus {
@@ -557,55 +559,108 @@
         padding: 6px 5px;
       }
     }
+
+    body.authLocked > h2,
+    body.authLocked > .subTitle,
+    body.authLocked > .bottomNav,
+    body.authLocked > .section:not(#authSection) {
+      display: none !important;
+    }
+    #authSection.hidden,
+    .adminOnly.hidden {
+      display: none !important;
+    }
+    .authStatus {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+      min-height: 18px;
+    }
+    .authStatus.error { color: var(--danger); }
+    .authStatus.success { color: var(--accent); }
   </style>
 </head>
 <body>
 <script>
-  // Container mode persistence:
-  // Loads domain data from normalized PostgREST RPCs and saves tournament/player
-  // list updates through normalized database functions. Small UI-only keys still
-  // use app_storage for compatibility.
+  // Container mode persistence + app login:
+  // Domain data is read/written through token-protected normalized RPCs.
   (function bootstrapServerBackedStorage() {
+    document.body.classList.add('authLocked');
+
     const APP_KEY_PREFIX = 'bt_';
     const TOURNAMENT_PREFIX = 'bt_tournament_v1_';
     const PLAYER_LIST_PREFIX = 'bt_playerlist_v1_';
     const storageApi = '/api/app_storage';
-    const exportApi = '/api/rpc/export_app_state';
     const nativeSetItem = Storage.prototype.setItem;
     const nativeRemoveItem = Storage.prototype.removeItem;
+    const sessionKey = 'bt_auth_session_v1';
 
-    function isAppKey(key) {
-      return typeof key === 'string' && key.startsWith(APP_KEY_PREFIX);
+    function isAppKey(key) { return typeof key === 'string' && key.startsWith(APP_KEY_PREFIX); }
+    function isTournamentKey(key) { return typeof key === 'string' && key.startsWith(TOURNAMENT_PREFIX); }
+    function isPlayerListKey(key) { return typeof key === 'string' && key.startsWith(PLAYER_LIST_PREFIX); }
+
+    function getSession() {
+      try { return JSON.parse(sessionStorage.getItem(sessionKey) || 'null'); }
+      catch { return null; }
     }
 
-    function isTournamentKey(key) {
-      return typeof key === 'string' && key.startsWith(TOURNAMENT_PREFIX);
+    function setSession(session) {
+      sessionStorage.setItem(sessionKey, JSON.stringify(session));
     }
 
-    function isPlayerListKey(key) {
-      return typeof key === 'string' && key.startsWith(PLAYER_LIST_PREFIX);
+    function clearSession() {
+      sessionStorage.removeItem(sessionKey);
+    }
+
+    function authToken() {
+      return getSession()?.token || '';
     }
 
     function sendJson(url, options) {
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(options && options.headers ? options.headers : {}),
-      };
-      return fetch(url, {
-        keepalive: true,
-        ...options,
-        headers,
-      }).catch((error) => {
+      const headers = { 'Content-Type': 'application/json', ...(options?.headers || {}) };
+      return fetch(url, { keepalive: true, ...options, headers }).catch((error) => {
         console.warn('Database sync failed:', error);
       });
     }
 
+    function postRpc(path, payload) {
+      return fetch(`/api/rpc/${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload || {}),
+      });
+    }
+
+    function hydrateFromDatabase(token) {
+      if (!token) return false;
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/rpc/export_app_state', false);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({ auth_token: token }));
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const items = JSON.parse(xhr.responseText || '{}') || {};
+          Object.keys(items).forEach((key) => {
+            if (isAppKey(key)) nativeSetItem.call(localStorage, key, items[key]);
+          });
+          return true;
+        }
+        clearSession();
+      } catch (error) {
+        console.warn('Could not hydrate from normalized database APIs.', error);
+      }
+      return false;
+    }
+
     function saveDomainKey(key, value) {
+      const token = authToken();
+      if (!token) return false;
+
       if (isTournamentKey(key)) {
         try {
           sendJson('/api/rpc/save_tournament', {
             method: 'POST',
-            body: JSON.stringify({ payload: JSON.parse(value) }),
+            body: JSON.stringify({ auth_token: token, payload: JSON.parse(value) }),
           });
         } catch (error) {
           console.warn('Could not save tournament to normalized API:', error);
@@ -617,7 +672,7 @@
         try {
           sendJson('/api/rpc/save_player_list', {
             method: 'POST',
-            body: JSON.stringify({ storage_key: key, payload: JSON.parse(value) }),
+            body: JSON.stringify({ auth_token: token, storage_key: key, payload: JSON.parse(value) }),
           });
         } catch (error) {
           console.warn('Could not save player list to normalized API:', error);
@@ -629,10 +684,13 @@
     }
 
     function deleteDomainKey(key) {
+      const token = authToken();
+      if (!token) return false;
+
       if (isTournamentKey(key)) {
         sendJson('/api/rpc/delete_tournament', {
           method: 'POST',
-          body: JSON.stringify({ tournament_id: key.replace(TOURNAMENT_PREFIX, '') }),
+          body: JSON.stringify({ auth_token: token, tournament_id: key.replace(TOURNAMENT_PREFIX, '') }),
         });
         return true;
       }
@@ -640,7 +698,7 @@
       if (isPlayerListKey(key)) {
         sendJson('/api/rpc/delete_player_list', {
           method: 'POST',
-          body: JSON.stringify({ player_list_id: key.replace(PLAYER_LIST_PREFIX, '') }),
+          body: JSON.stringify({ auth_token: token, player_list_id: key.replace(PLAYER_LIST_PREFIX, '') }),
         });
         return true;
       }
@@ -648,61 +706,133 @@
       return false;
     }
 
-    try {
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', exportApi, false);
-      xhr.send(null);
+    window.btAuth = {
+      getSession,
+      setSession,
+      clearSession,
+      hydrateFromDatabase,
+      postRpc,
+      authToken,
+      async login(username, password) {
+        const res = await postRpc('login_user', { username, password });
+        if (!res.ok) throw new Error(await res.text());
+        const session = await res.json();
+        setSession(session);
+        if (!session.mustResetPassword) hydrateFromDatabase(session.token);
+        return session;
+      },
+      async logout() {
+        const token = authToken();
+        if (token) await postRpc('logout_user', { auth_token: token });
+        clearSession();
+        location.reload();
+      },
+    };
 
-      if (xhr.status >= 200 && xhr.status < 300) {
-        const items = JSON.parse(xhr.responseText || '{}') || {};
-        Object.keys(items).forEach((key) => {
-          if (isAppKey(key)) nativeSetItem.call(localStorage, key, items[key]);
-        });
-      }
-    } catch (error) {
-      console.warn('Could not hydrate from normalized database APIs. Using browser cache only.', error);
+    const session = getSession();
+    if (session?.token && !session.mustResetPassword && hydrateFromDatabase(session.token)) {
+      document.body.classList.remove('authLocked');
     }
 
     Storage.prototype.setItem = function patchedSetItem(key, value) {
       nativeSetItem.call(this, key, value);
       if (this !== localStorage || !isAppKey(key)) return;
-
       if (saveDomainKey(key, String(value))) return;
-
-      sendJson(storageApi, {
+      const token = authToken();
+      if (!token) return;
+      sendJson('/api/rpc/save_app_setting', {
         method: 'POST',
-        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-        body: JSON.stringify({ key, value: String(value) }),
+        body: JSON.stringify({ auth_token: token, storage_key: key, storage_value: String(value) }),
       });
     };
 
     Storage.prototype.removeItem = function patchedRemoveItem(key) {
       nativeRemoveItem.call(this, key);
       if (this !== localStorage || !isAppKey(key)) return;
-
       if (deleteDomainKey(key)) return;
-
-      sendJson(`${storageApi}?key=eq.${encodeURIComponent(key)}`, { method: 'DELETE' });
+      const token = authToken();
+      if (!token) return;
+      sendJson('/api/rpc/delete_app_setting', {
+        method: 'POST',
+        body: JSON.stringify({ auth_token: token, storage_key: key }),
+      });
     };
-
-    window.addEventListener('load', () => {
-      Object.keys(localStorage)
-        .filter(isAppKey)
-        .forEach((key) => {
-          const value = localStorage.getItem(key) || '';
-          if (saveDomainKey(key, value)) return;
-          sendJson(storageApi, {
-            method: 'POST',
-            headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-            body: JSON.stringify({ key, value }),
-          });
-        });
-    });
   })();
 </script>
 
 <h2>Welcome to Badminton Tournament</h2>
 <div class="subTitle">Manage tournaments, players, schedules, and leaderboards in one place.</div>
+<div class="section hidden" id="sessionBar" style="margin-bottom:12px;">
+  <div class="row" style="justify-content: space-between;">
+    <div><b>Signed in:</b> <span id="signedInUser">-</span></div>
+    <button id="sessionLogoutBtn" class="secondary">Logout</button>
+  </div>
+</div>
+
+
+<div class="section" id="authSection">
+  <h3 style="margin-top:0">Login</h3>
+  <div class="hint">Use your tournament account. New users must reset their temporary password on first login.</div>
+
+  <div id="loginPanel">
+    <label for="loginUsername">Username</label>
+    <input id="loginUsername" type="text" autocomplete="username" placeholder="Username" />
+    <label for="loginPassword">Password</label>
+    <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Password" />
+    <button id="loginBtn">Login</button>
+    <div id="loginStatus" class="authStatus"></div>
+  </div>
+
+  <div id="resetPasswordPanel" class="hidden">
+    <h4 style="margin:0 0 6px">Reset Password</h4>
+    <div class="hint">You must set a new password before using the app.</div>
+    <label for="currentPasswordInput">Current / Temporary Password</label>
+    <input id="currentPasswordInput" type="password" autocomplete="current-password" />
+    <label for="newPasswordInput">New Password</label>
+    <input id="newPasswordInput" type="password" autocomplete="new-password" />
+    <label for="confirmPasswordInput">Confirm New Password</label>
+    <input id="confirmPasswordInput" type="password" autocomplete="new-password" />
+    <button id="resetMyPasswordBtn">Reset Password</button>
+    <div id="resetPasswordStatus" class="authStatus"></div>
+  </div>
+</div>
+
+<div class="section adminOnly hidden" id="usersAdminSection">
+  <div class="row" style="justify-content: space-between; align-items: flex-start;">
+    <div>
+      <h3 style="margin-top:0">Users</h3>
+      <div class="hint">Create users, issue temporary passwords, and force first-login password resets.</div>
+    </div>
+    <button id="logoutBtn" class="secondary">Logout</button>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <label for="newUserUsername">Username</label>
+      <input id="newUserUsername" type="text" placeholder="e.g., scorer1" />
+    </div>
+    <div class="col">
+      <label for="newUserDisplayName">Display Name</label>
+      <input id="newUserDisplayName" type="text" placeholder="e.g., Court Scorer" />
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <label for="newUserPassword">Temporary Password</label>
+      <input id="newUserPassword" type="text" placeholder="At least 8 characters" />
+    </div>
+    <div class="col">
+      <label for="newUserIsAdmin">Admin</label>
+      <select id="newUserIsAdmin">
+        <option value="false">No</option>
+        <option value="true">Yes</option>
+      </select>
+    </div>
+  </div>
+  <button id="createUserBtn">Create User</button>
+  <div id="createUserStatus" class="authStatus"></div>
+  <div id="usersList" style="margin-top:14px"></div>
+</div>
 
 <!-- Top tab bar (centered feature navigation) -->
 <div class="bottomNav" id="bottomNav" role="tablist" aria-label="Tournament features">
@@ -2881,6 +3011,182 @@ function renderFinalSummary(finalMatch) {
     renderFinalMatch(tournament.finalMatch);
   }
 
+
+
+  function setAuthStatus(el, message, kind) {
+    if (!el) return;
+    el.textContent = message || '';
+    el.classList.remove('error', 'success');
+    if (kind) el.classList.add(kind);
+  }
+
+  function currentAuthSession() {
+    return window.btAuth?.getSession?.() || null;
+  }
+
+  function showAuthenticatedApp(session) {
+    document.body.classList.remove('authLocked');
+    const authSection = document.getElementById('authSection');
+    const sessionBar = document.getElementById('sessionBar');
+    const signedInUser = document.getElementById('signedInUser');
+    const usersAdminSection = document.getElementById('usersAdminSection');
+    if (authSection) authSection.classList.add('hidden');
+    if (sessionBar) sessionBar.classList.remove('hidden');
+    if (signedInUser) signedInUser.textContent = `${session.displayName || session.username}${session.isAdmin ? ' (admin)' : ''}`;
+    if (usersAdminSection) usersAdminSection.classList.toggle('hidden', !session.isAdmin);
+    if (session.isAdmin) renderUsersAdmin();
+  }
+
+  function showLoginOrReset() {
+    const session = currentAuthSession();
+    const authSection = document.getElementById('authSection');
+    const loginPanel = document.getElementById('loginPanel');
+    const resetPanel = document.getElementById('resetPasswordPanel');
+    if (authSection) authSection.classList.remove('hidden');
+    if (session?.mustResetPassword) {
+      if (loginPanel) loginPanel.classList.add('hidden');
+      if (resetPanel) resetPanel.classList.remove('hidden');
+    } else if (session?.token) {
+      showAuthenticatedApp(session);
+    } else {
+      if (loginPanel) loginPanel.classList.remove('hidden');
+      if (resetPanel) resetPanel.classList.add('hidden');
+      document.body.classList.add('authLocked');
+    }
+  }
+
+  async function renderUsersAdmin() {
+    const list = document.getElementById('usersList');
+    const session = currentAuthSession();
+    if (!list || !session?.isAdmin) return;
+    list.innerHTML = '<div class="hint">Loading users...</div>';
+    const res = await window.btAuth.postRpc('list_users', { auth_token: session.token });
+    if (!res.ok) {
+      list.innerHTML = '<div class="hint">Unable to load users.</div>';
+      return;
+    }
+    const users = await res.json();
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const header = document.createElement('tr');
+    ['Username', 'Name', 'Admin', 'Reset Required', 'Active', 'Actions'].forEach(h => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      header.appendChild(th);
+    });
+    thead.appendChild(header);
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    users.forEach(user => {
+      const tr = document.createElement('tr');
+      [user.username, user.display_name, user.is_admin ? 'Yes' : 'No', user.must_reset_password ? 'Yes' : 'No', user.is_active ? 'Yes' : 'No'].forEach(value => {
+        const td = document.createElement('td');
+        td.textContent = value;
+        tr.appendChild(td);
+      });
+      const actions = document.createElement('td');
+      const reset = document.createElement('button');
+      reset.type = 'button';
+      reset.className = 'smallBtn secondary';
+      reset.textContent = 'Reset';
+      reset.addEventListener('click', async () => {
+        const temp = prompt(`Temporary password for ${user.username}:`);
+        if (!temp) return;
+        const r = await window.btAuth.postRpc('reset_user_password', { auth_token: session.token, username: user.username, temporary_password: temp });
+        if (!r.ok) alert(await r.text());
+        await renderUsersAdmin();
+      });
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = `smallBtn ${user.is_active ? 'danger' : 'secondary'}`;
+      toggle.textContent = user.is_active ? 'Disable' : 'Enable';
+      toggle.addEventListener('click', async () => {
+        const r = await window.btAuth.postRpc('set_user_active', { auth_token: session.token, username: user.username, is_active: !user.is_active });
+        if (!r.ok) alert(await r.text());
+        await renderUsersAdmin();
+      });
+      actions.appendChild(reset);
+      actions.appendChild(document.createTextNode(' '));
+      actions.appendChild(toggle);
+      tr.appendChild(actions);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    list.innerHTML = '';
+    list.appendChild(table);
+  }
+
+  function bindAuthUi() {
+    const session = currentAuthSession();
+    if (session?.token && !session.mustResetPassword) showAuthenticatedApp(session);
+    else showLoginOrReset();
+
+    const loginBtn = document.getElementById('loginBtn');
+    const resetBtn = document.getElementById('resetMyPasswordBtn');
+    const createUserBtn = document.getElementById('createUserBtn');
+    const logoutBtns = [document.getElementById('logoutBtn'), document.getElementById('sessionLogoutBtn')].filter(Boolean);
+
+    loginBtn?.addEventListener('click', async () => {
+      const username = document.getElementById('loginUsername')?.value.trim();
+      const password = document.getElementById('loginPassword')?.value || '';
+      const status = document.getElementById('loginStatus');
+      setAuthStatus(status, 'Signing in...');
+      try {
+        const s = await window.btAuth.login(username, password);
+        if (s.mustResetPassword) {
+          setAuthStatus(status, 'Password reset required.', 'success');
+          showLoginOrReset();
+          return;
+        }
+        location.reload();
+      } catch (error) {
+        setAuthStatus(status, 'Invalid username or password.', 'error');
+      }
+    });
+
+    resetBtn?.addEventListener('click', async () => {
+      const session = currentAuthSession();
+      const currentPassword = document.getElementById('currentPasswordInput')?.value || '';
+      const newPassword = document.getElementById('newPasswordInput')?.value || '';
+      const confirmPassword = document.getElementById('confirmPasswordInput')?.value || '';
+      const status = document.getElementById('resetPasswordStatus');
+      if (newPassword !== confirmPassword) {
+        setAuthStatus(status, 'Passwords do not match.', 'error');
+        return;
+      }
+      setAuthStatus(status, 'Resetting password...');
+      const res = await window.btAuth.postRpc('change_my_password', { auth_token: session?.token, current_password: currentPassword, new_password: newPassword });
+      if (!res.ok) {
+        setAuthStatus(status, 'Password reset failed. Check the current password and minimum length.', 'error');
+        return;
+      }
+      session.mustResetPassword = false;
+      window.btAuth.setSession(session);
+      window.btAuth.hydrateFromDatabase(session.token);
+      location.reload();
+    });
+
+    createUserBtn?.addEventListener('click', async () => {
+      const session = currentAuthSession();
+      const status = document.getElementById('createUserStatus');
+      const username = document.getElementById('newUserUsername')?.value.trim();
+      const displayName = document.getElementById('newUserDisplayName')?.value.trim();
+      const temporaryPassword = document.getElementById('newUserPassword')?.value || '';
+      const isAdmin = document.getElementById('newUserIsAdmin')?.value === 'true';
+      setAuthStatus(status, 'Creating user...');
+      const res = await window.btAuth.postRpc('create_user', { auth_token: session?.token, username, display_name: displayName, temporary_password: temporaryPassword, is_admin: isAdmin });
+      if (!res.ok) {
+        setAuthStatus(status, 'Could not create user. Check username/password and duplicates.', 'error');
+        return;
+      }
+      ['newUserUsername', 'newUserDisplayName', 'newUserPassword'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      setAuthStatus(status, 'User created. They must reset this password on first login.', 'success');
+      await renderUsersAdmin();
+    });
+
+    logoutBtns.forEach(btn => btn.addEventListener('click', () => window.btAuth.logout()));
+  }
+
   // ----------------------------
   // Init
   // ----------------------------
@@ -2910,6 +3216,7 @@ function renderFinalSummary(finalMatch) {
   window.addEventListener('unhandledrejection', (e) => {
     console.error('Unhandled promise rejection:', e.reason);
   });
+  bindAuthUi();
 </script>
 
 </body>
