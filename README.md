@@ -70,6 +70,11 @@ curl -X POST http://localhost:8080/api/rpc/list_users \
 curl -X POST http://localhost:8080/api/rpc/create_user \
   -H 'Content-Type: application/json' \
   -d '{"auth_token":"TOKEN","username":"scorer1","display_name":"Court Scorer","temporary_password":"TempPass2026","is_admin":false}'
+
+# Delete a user, admin-only. The current account and last active admin are protected.
+curl -X POST http://localhost:8080/api/rpc/delete_user \
+  -H 'Content-Type: application/json' \
+  -d '{"auth_token":"TOKEN","username":"scorer1"}'
 ```
 
 Direct table endpoints are not granted to anonymous users; app data flows through token-protected RPCs.

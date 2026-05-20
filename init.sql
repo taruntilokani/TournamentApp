@@ -1098,3 +1098,49 @@ GRANT EXECUTE ON FUNCTION
 TO web_anon;
 
 DROP FUNCTION IF EXISTS api.export_app_state();
+
+CREATE OR REPLACE FUNCTION api.delete_user(auth_token TEXT, username TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = api, public
+AS $$
+DECLARE
+  admin_row api.app_users;
+  target_row api.app_users;
+  normalized_username TEXT;
+  active_admin_count INTEGER;
+BEGIN
+  admin_row := api.require_admin_user(auth_token);
+  normalized_username := lower(trim(username));
+
+  SELECT * INTO target_row
+  FROM api.app_users u
+  WHERE u.username = normalized_username;
+
+  IF target_row.id IS NULL THEN
+    RAISE EXCEPTION 'User not found' USING ERRCODE = '02000';
+  END IF;
+
+  IF target_row.username = admin_row.username THEN
+    RAISE EXCEPTION 'You cannot delete your own account' USING ERRCODE = '42501';
+  END IF;
+
+  IF target_row.is_admin THEN
+    SELECT COUNT(*) INTO active_admin_count
+    FROM api.app_users u
+    WHERE u.is_admin = TRUE AND u.is_active = TRUE;
+
+    IF active_admin_count <= 1 THEN
+      RAISE EXCEPTION 'You cannot delete the last active admin account' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
+  DELETE FROM api.app_users u
+  WHERE u.id = target_row.id;
+
+  RETURN jsonb_build_object('ok', TRUE, 'username', normalized_username);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION api.delete_user(TEXT, TEXT) TO web_anon;

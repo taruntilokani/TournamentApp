@@ -3111,9 +3111,24 @@ function renderFinalSummary(finalMatch) {
         if (!r.ok) alert(await r.text());
         await renderUsersAdmin();
       });
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'smallBtn danger';
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.disabled = user.username === session.username;
+      deleteBtn.title = deleteBtn.disabled ? 'You cannot delete your own account.' : `Delete ${user.username}`;
+      deleteBtn.addEventListener('click', async () => {
+        const ok = confirm(`Delete user ${user.username}? This will remove their sessions and cannot be undone.`);
+        if (!ok) return;
+        const r = await window.btAuth.postRpc('delete_user', { auth_token: session.token, username: user.username });
+        if (!r.ok) alert(await r.text());
+        await renderUsersAdmin();
+      });
       actions.appendChild(reset);
       actions.appendChild(document.createTextNode(' '));
       actions.appendChild(toggle);
+      actions.appendChild(document.createTextNode(' '));
+      actions.appendChild(deleteBtn);
       tr.appendChild(actions);
       tbody.appendChild(tr);
     });
