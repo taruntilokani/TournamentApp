@@ -473,9 +473,12 @@
       flex: 1;
       font-size: 14px;
     }
+    .scoreInput,
     .knockoutTeamRow input[type=number] {
       width: 70px;
+      min-width: 70px;
       margin-bottom: 0;
+      text-align: center;
     }
     .knockoutFooter {
       font-size: 12px;
@@ -549,6 +552,35 @@
 
       input[type=number] {
         width: 100% !important;
+      }
+
+      #scheduleOutput {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 2px;
+      }
+
+      #scheduleOutput table {
+        display: table;
+        min-width: 560px;
+      }
+
+      #scheduleOutput th,
+      #scheduleOutput td {
+        padding: 8px 7px;
+      }
+
+      #scheduleOutput td:nth-child(3),
+      #scheduleOutput td:nth-child(5) {
+        width: 84px;
+        min-width: 84px;
+      }
+
+      .scoreInput,
+      .knockoutTeamRow input[type=number] {
+        width: 72px !important;
+        min-width: 72px;
+        max-width: 72px;
       }
 
       .hometab,
@@ -2270,6 +2302,7 @@ const STORAGE_KEYS = {
       }
 
       const table = document.createElement('table');
+      table.className = 'scheduleTable';
       const thead = document.createElement('thead');
       const trh = document.createElement('tr');
       ['Match', 'Team 1', 'Score', 'vs', 'Score', 'Team 2'].forEach(h => {
@@ -2296,6 +2329,7 @@ const STORAGE_KEYS = {
         const i1 = document.createElement('input');
         i1.type = 'number';
         i1.min = 0;
+        i1.className = 'scoreInput';
         i1.style.width = '70px';
         i1.value = m.score1 === null || m.score1 === undefined ? '' : m.score1;
         i1.addEventListener('input', () => onScoreInput(m.id, 1, i1.value));
@@ -2310,6 +2344,7 @@ const STORAGE_KEYS = {
         const i2 = document.createElement('input');
         i2.type = 'number';
         i2.min = 0;
+        i2.className = 'scoreInput';
         i2.style.width = '70px';
         i2.value = m.score2 === null || m.score2 === undefined ? '' : m.score2;
         i2.addEventListener('input', () => onScoreInput(m.id, 2, i2.value));
@@ -2472,6 +2507,7 @@ function renderFinalMatch(finalMatch) {
     row.appendChild(team);
     const scoreInput = document.createElement('input');
     scoreInput.type = 'number';
+    scoreInput.className = 'scoreInput';
     scoreInput.style.width = '70px';
     scoreInput.min = 0;
     scoreInput.value = finalMatch[scoreKey] ?? '';
@@ -2996,6 +3032,7 @@ function renderFinalSummary(finalMatch) {
       team1.textContent = match.team1 ? getTeamDisplayName(match.team1) : '-';
       const score1 = document.createElement('input');
       score1.type = 'number';
+      score1.className = 'scoreInput';
       score1.style.width = '70px';
       score1.min = 0;
       score1.value = match.score1 ?? '';
@@ -3017,6 +3054,7 @@ function renderFinalSummary(finalMatch) {
       team2.textContent = match.team2 ? getTeamDisplayName(match.team2) : '-';
       const score2 = document.createElement('input');
       score2.type = 'number';
+      score2.className = 'scoreInput';
       score2.style.width = '70px';
       score2.min = 0;
       score2.value = match.score2 ?? '';
