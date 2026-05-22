@@ -6,36 +6,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
   <title>Badminton Tournament Manager</title>
   <style>
-    /*
-      Awesome modern theme
-      - Glassmorphism card surfaces
-      - Soft gradient background
-      - Slightly larger, friendlier typography
-    */
     :root {
-      --primary: #6366f1;      /* indigo */
-      --primary-soft: rgba(99, 102, 241, 0.12);
-      --bg: radial-gradient(circle at top left, #111827 0%, #020617 55%, #020617 100%);
-      --card: rgba(15, 23, 42, 0.85);
-      --border: rgba(148, 163, 184, 0.4);
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --accent: #22c55e;       /* green for status*/
-      --danger: #f97373;
-      --shadow-soft: 0 18px 45px rgba(15,23,42,0.65);
+      --primary: #0f766e;
+      --primary-strong: #115e59;
+      --primary-soft: #ccfbf1;
+      --bg: #f4f7f6;
+      --surface: #ffffff;
+      --surface-alt: #f8fafc;
+      --border: #d7e1df;
+      --border-strong: #afbfbb;
+      --text: #15201d;
+      --muted: #64736f;
+      --accent: #16a34a;
+      --danger: #dc2626;
+      --danger-soft: #fee2e2;
+      --shadow-soft: 0 12px 30px rgba(15, 23, 42, 0.08);
+      --focus-ring: 0 0 0 3px rgba(20, 184, 166, 0.18);
     }
+
     * {
       box-sizing: border-box;
     }
+
     html {
       width: 100%;
       min-height: 100%;
       overflow-x: hidden;
     }
+
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       margin: 0;
-      padding: clamp(10px, 3vw, 18px) clamp(6px, 2.5vw, 14px) 28px;
+      padding: 16px 12px 28px;
       min-height: 100vh;
       width: 100%;
       max-width: 100vw;
@@ -45,343 +47,383 @@
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      -webkit-tap-highlight-color: transparent; /* better feel on Android */
+      -webkit-tap-highlight-color: transparent;
     }
+
     h2 {
-      text-align: center;
-      margin-bottom: 8px;
-      letter-spacing: 0.03em;
-      font-size: clamp(19px, 5vw, 28px);
-      line-height: 1.25;
-      padding: 0 8px;
+      width: min(100%, 1040px);
+      margin: 0 auto 4px;
+      padding: 0 2px;
+      color: var(--text);
+      font-size: clamp(23px, 4.5vw, 32px);
+      font-weight: 760;
+      line-height: 1.15;
+      letter-spacing: 0;
     }
+
+    h3 {
+      color: var(--text);
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    h4 {
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+
     .subTitle {
-      text-align: center;
+      width: min(100%, 1040px);
+      margin: 0 auto 14px;
+      padding: 0 2px;
       color: var(--muted);
-      margin-bottom: 16px;
       font-size: 13px;
-      padding: 0 8px;
+      line-height: 1.45;
     }
+
     .section {
-      background: var(--card);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      padding: clamp(12px, 3vw, 18px);
-      margin-bottom: 16px;
-      border-radius: 18px;
+      background: var(--surface);
+      padding: clamp(14px, 2.6vw, 20px);
+      margin: 0 auto 14px;
+      border-radius: 8px;
       box-shadow: var(--shadow-soft);
-      width: min(100%, 760px);
+      width: min(100%, 1040px);
       max-width: 100%;
-      margin-left: auto;
-      margin-right: auto;
       border: 1px solid var(--border);
       position: relative;
       overflow: hidden;
     }
-    .featureView.hidden {
-      display: none !important;
-    }
-    .featureView:not(.hidden) {
-      display: block;
-    }
-    .primaryNav {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 18px;
-    }
-    .primaryNav button {
-      background: rgba(15, 23, 42, 0.78);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 8px 16px;
-      border-radius: 999px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-    }
-    .primaryNav button.active {
-      background: linear-gradient(135deg, var(--primary), #4f46e5);
-      color: #fff;
-      border-color: rgba(79, 70, 229, 0.7);
-      box-shadow: 0 14px 26px rgba(79, 70, 229, 0.35);
-    }
-    .primaryNav button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
+
     .section::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      background: radial-gradient(circle at top right, rgba(129, 140, 248, 0.28), transparent 55%);
-      opacity: 0.9;
+      display: none;
     }
+
     .section > * {
       position: relative;
       z-index: 1;
     }
+
+    .featureView.hidden {
+      display: none !important;
+    }
+
+    .featureView:not(.hidden) {
+      display: block;
+    }
+
     .row {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       flex-wrap: wrap;
       align-items: center;
       width: 100%;
     }
+
     .col {
       flex: 1;
-      min-width: min(240px, 100%);
+      min-width: min(250px, 100%);
     }
+
     label {
       display: block;
-      margin: 8px 0 4px;
-      font-weight: 500;
-      font-size: 12px;
+      margin: 10px 0 5px;
+      font-weight: 650;
+      font-size: 11px;
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
+
     input[type=text], input[type=password], input[type=number], select, textarea {
       width: 100%;
       max-width: 100%;
       padding: 10px 11px;
       margin-bottom: 8px;
-      border-radius: 9px;
-      border: 1px solid rgba(148, 163, 184, 0.7);
-      background: rgba(15, 23, 42, 0.9);
+      border-radius: 8px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
       color: var(--text);
-      font-size: 16px; /* prevents unwanted Android/iOS zoom and stays readable */
+      font-size: 16px;
+      line-height: 1.35;
       outline: none;
-      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+      transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
     }
+
     input[type=text]::placeholder,
     input[type=password]::placeholder,
     input[type=number]::placeholder,
     textarea::placeholder {
-      color: rgba(148, 163, 184, 0.7);
+      color: #94a3b8;
     }
+
     input[type=number] {
       appearance: textfield;
       -moz-appearance: textfield;
       text-align: center;
     }
+
     input[type=number]::-webkit-outer-spin-button,
     input[type=number]::-webkit-inner-spin-button {
       -webkit-appearance: none;
       margin: 0;
     }
+
     input[type=text]:focus,
     input[type=password]:focus,
     input[type=number]:focus,
     select:focus,
     textarea:focus {
       border-color: var(--primary);
-      box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.4);
-      background: rgba(15, 23, 42, 0.98);
+      box-shadow: var(--focus-ring);
+      background: #ffffff;
     }
+
     button {
-      background: linear-gradient(135deg, var(--primary), #4f46e5);
-      color: white;
-      border: none;
-      padding: 10px 16px;
-      border-radius: 999px;
+      background: var(--primary);
+      color: #ffffff;
+      border: 1px solid var(--primary);
+      padding: 10px 14px;
+      border-radius: 8px;
       cursor: pointer;
       font-size: 13px;
-      font-weight: 500;
-      letter-spacing: 0.02em;
+      font-weight: 650;
+      letter-spacing: 0;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
-      box-shadow: 0 14px 30px rgba(79, 70, 229, 0.45);
-      transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease, background 0.12s ease;
+      min-height: 38px;
+      box-shadow: none;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease, background 0.12s ease, border-color 0.12s ease;
     }
+
     button.secondary {
-      background: linear-gradient(135deg, #0f172a, #020617);
-      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.7);
+      background: #ffffff;
+      color: var(--text);
+      border-color: var(--border-strong);
     }
+
     button.danger {
-      background: linear-gradient(135deg, #f97373, #dc2626);
-      box-shadow: 0 12px 26px rgba(248, 113, 113, 0.6);
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #ffffff;
     }
+
     button:hover:not(:disabled) {
       transform: translateY(-1px);
-      box-shadow: 0 18px 32px rgba(79, 70, 229, 0.6);
-      opacity: 0.96;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.13);
+      opacity: 0.98;
     }
+
     button:active:not(:disabled) {
       transform: translateY(0);
-      box-shadow: 0 10px 22px rgba(79, 70, 229, 0.55);
+      box-shadow: none;
     }
+
     button:disabled {
-      background: rgba(148, 163, 184, 0.4);
+      background: #e5e7eb;
+      border-color: #d1d5db;
+      color: #94a3b8;
       box-shadow: none;
       cursor: not-allowed;
-      opacity: 0.5;
+      opacity: 1;
     }
+
     table {
       width: 100%;
       max-width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
       margin-top: 10px;
-      font-size: clamp(11px, 2.8vw, 12px);
-      border-radius: 12px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
       overflow: hidden;
-      backdrop-filter: blur(16px);
+      background: var(--surface);
     }
+
     th, td {
-      border: 1px solid rgba(55, 65, 81, 0.8);
-      padding: 8px 6px;
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      padding: 9px 8px;
       text-align: center;
-      background: rgba(15, 23, 42, 0.9);
+      background: var(--surface);
+      color: var(--text);
     }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
     th {
-      background: linear-gradient(135deg, rgba(79, 70, 229, 0.94), rgba(56, 189, 248, 0.9));
-      color: white;
-      font-weight: 600;
+      background: #0f766e;
+      color: #ffffff;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.04em;
       font-size: 10px;
     }
+
     .hidden { display: none; }
 
-    /* ------------------------
-       Mobile-first top tabs
-       ------------------------ */
     .bottomNav {
       position: sticky;
       top: 0;
       z-index: 50;
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 6px;
-      width: min(100%, 760px);
+      display: flex;
+      gap: 5px;
+      width: min(100%, 1040px);
       max-width: 100%;
-      margin: 0 auto 18px;
-      padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
-      background: rgba(2, 6, 23, 0.92);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
+      margin: 0 auto 14px;
+      padding: 6px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--border);
-      border-radius: 16px;
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.55);
+      border-radius: 8px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+      scrollbar-width: thin;
     }
-    @media (min-width: 720px) {
-      .bottomNav {
-        max-width: 760px;
-        margin-left: auto;
-        margin-right: auto;
-      }
-    }
+
     .bottomNav button {
-      background: rgba(15, 23, 42, 0.78);
-      border: 1px solid rgba(148, 163, 184, 0.35);
+      flex: 0 0 auto;
+      min-width: 104px;
+      width: auto;
+      background: transparent;
+      border: 1px solid transparent;
       color: var(--muted);
-      padding: 10px 10px;
-      border-radius: 12px;
+      padding: 9px 11px;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 700;
       box-shadow: none;
-      letter-spacing: 0.01em;
       text-transform: none;
-      width: 100%;
-      min-width: 0;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .bottomNav button.active {
-      background: linear-gradient(135deg, var(--primary), #4f46e5);
-      color: #fff;
-      border-color: rgba(79, 70, 229, 0.7);
-    }
-    .bottomNav button:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
+
+    .bottomNav button:hover:not(:disabled) {
+      background: var(--surface-alt);
+      border-color: var(--border);
+      color: var(--text);
+      transform: none;
+      box-shadow: none;
     }
 
-    /* Tabs are now placed at the top, so no fixed-bottom spacing is needed */
+    .bottomNav button.active {
+      background: var(--primary-soft);
+      color: var(--primary-strong);
+      border-color: #99f6e4;
+    }
+
+    .bottomNav button:disabled {
+      background: transparent;
+      color: #b7c1be;
+      border-color: transparent;
+      cursor: not-allowed;
+      opacity: 1;
+    }
+
     body {
       padding-bottom: 28px;
     }
+
     .pill {
       display: inline-block;
       padding: 3px 8px;
       border-radius: 999px;
-      background: #eef2ff;
-      color: #3730a3;
+      background: var(--primary-soft);
+      color: var(--primary-strong);
       font-size: 11px;
-      border: 1px solid #c7d2fe;
+      border: 1px solid #99f6e4;
     }
 
-    /* Tabs */
-    .tab {
-      overflow: hidden;
-      border-bottom: 1px solid #ccc;
-      background-color: #f1f1f1;
-      border-radius: 8px 8px 0 0;
+    .primaryNav,
+    .tab,
+    .hometab {
       display: flex;
       flex-wrap: wrap;
-      gap: 4px;
-      padding: 4px;
+      gap: 5px;
+      padding: 5px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface-alt);
     }
-    .tab button {
-      background-color: inherit;
-      border: none;
-      outline: none;
-      cursor: pointer;
-      padding: 9px 10px;
-      transition: 0.2s;
-      font-size: 13px;
-      border-radius: 7px;
-      color: #111827;
-    }
-    .tab button:hover { background-color: #e5e7eb; }
-    .tab button.active {
-      background-color: white;
-      border: 1px solid #e5e7eb;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-    }
-    .tabcontent { padding-top: 10px; }
-    .hint {
-      font-size: 11px;
+
+    .primaryNav button,
+    .tab button,
+    .hometab button {
+      background: transparent;
+      border: 1px solid transparent;
       color: var(--muted);
-      margin-top: -6px;
-      margin-bottom: 10px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      box-shadow: none;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .primaryNav button.active,
+    .tab button.active,
+    .hometab button.active {
+      background: var(--surface);
+      color: var(--primary-strong);
+      border-color: var(--border);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+    }
+
+    .tabcontent,
+    .hometabcontent {
+      padding-top: 10px;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: -4px;
+      margin-bottom: 11px;
+      line-height: 1.45;
     }
 
     .list {
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px;
-      background: rgba(15, 23, 42, 0.85);
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.8);
+      border-radius: 8px;
+      padding: 8px;
+      background: var(--surface-alt);
+      box-shadow: none;
     }
+
     .listItem {
       display: flex;
       gap: 8px;
       align-items: center;
       justify-content: center;
-      padding: 6px;
+      padding: 8px 6px;
       border-bottom: 1px solid var(--border);
       position: relative;
       min-height: 42px;
     }
+
     .listItem:last-child { border-bottom: none; }
     .listItem input { margin-bottom: 0; }
+
     .playerNameText {
       flex: 1;
       text-align: center;
       font-size: 15px;
-      font-weight: 600;
+      font-weight: 650;
       padding: 0 42px;
       word-break: break-word;
     }
+
     .removeIconBtn {
       position: absolute;
       right: 6px;
@@ -391,88 +433,96 @@
       height: 30px;
       min-width: 30px;
       padding: 0;
-      border-radius: 999px;
+      border-radius: 8px;
       font-size: 20px;
       line-height: 1;
       font-weight: 700;
-      box-shadow: 0 8px 18px rgba(248, 113, 113, 0.35);
+      box-shadow: none;
     }
+
     .smallBtn {
       padding: 6px 9px;
+      min-height: 30px;
       font-size: 11px;
-      border-radius: 999px;
+      border-radius: 6px;
     }
 
-
-    /* Home tabs */
-    .hometab {
-      overflow: hidden;
-      border-bottom: 1px solid rgba(55, 65, 81, 0.8);
-      background: rgba(15, 23, 42, 0.9);
-      border-radius: 999px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      padding: 4px;
-      margin-top: 10px;
+    .statGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      margin: 12px 0 14px;
     }
-    .hometab button {
-      background-color: transparent;
-      border: none;
-      outline: none;
-      cursor: pointer;
-      padding: 7px 14px;
-      transition: 0.15s;
-      font-size: 13px;
-      border-radius: 999px;
+
+    .statCard {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      background: var(--surface-alt);
+      min-width: 0;
+    }
+
+    .statValue {
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1.1;
+      color: var(--text);
+      overflow-wrap: anywhere;
+    }
+
+    .statLabel {
+      margin-top: 4px;
       color: var(--muted);
-      font-weight: 500;
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
     }
-    .hometab button:hover { background-color: rgba(148, 163, 184, 0.15); }
-    .hometab button.active {
-      background: linear-gradient(135deg, rgba(79, 70, 229, 0.95), rgba(56, 189, 248, 0.9));
-      color: white;
-      box-shadow: 0 8px 18px rgba(56, 189, 248, 0.4);
+
+    .statSubtle {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      margin: 4px 0 10px;
     }
-    .hometabcontent { padding-top: 10px; }
 
     .knockoutMatches {
       display: grid;
       gap: 12px;
       grid-template-columns: minmax(0, 1fr);
     }
-    @media (min-width: 720px) {
-      .knockoutMatches {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
+
     .knockoutCard {
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 8px;
       padding: 12px;
-      background: rgba(15, 23, 42, 0.9);
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.5);
+      background: var(--surface-alt);
+      box-shadow: none;
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
+
     .knockoutHeader {
-      font-weight: 600;
-      font-size: 14px;
-      letter-spacing: 0.04em;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
       color: var(--muted);
     }
+
     .knockoutTeamRow {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 10px;
     }
+
     .knockoutTeamRow span {
       flex: 1;
       font-size: 14px;
     }
+
     .scoreInput,
     .knockoutTeamRow input[type=number] {
       width: 70px;
@@ -480,22 +530,108 @@
       margin-bottom: 0;
       text-align: center;
     }
+
     .knockoutFooter {
       font-size: 12px;
       color: var(--muted);
     }
 
-    /* ------------------------
-       Mobile optimizations
-       ------------------------ */
+    body.authLocked > h2,
+    body.authLocked > .subTitle,
+    body.authLocked > .bottomNav,
+    body.authLocked > .section:not(#authSection) {
+      display: none !important;
+    }
+
+    #authSection.hidden,
+    .adminOnly.hidden {
+      display: none !important;
+    }
+
+    .authStatus {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+      min-height: 18px;
+    }
+
+    .authStatus.error { color: var(--danger); }
+    .authStatus.success { color: var(--accent); }
+
+    @media (min-width: 720px) {
+      .knockoutMatches {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (min-width: 980px) {
+      body {
+        padding: 18px 24px 34px 248px;
+      }
+
+      body.authLocked {
+        padding-left: 24px;
+      }
+
+      h2,
+      .subTitle,
+      .section {
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .bottomNav {
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        bottom: 16px;
+        width: 208px;
+        margin: 0;
+        padding: 12px;
+        flex-direction: column;
+        align-items: stretch;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+
+      .bottomNav::before {
+        content: 'Navigation';
+        display: block;
+        padding: 3px 4px 10px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 750;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .bottomNav button {
+        width: 100%;
+        min-width: 0;
+        justify-content: flex-start;
+        padding: 10px 12px;
+        font-size: 13px;
+      }
+
+      .bottomNav button.active {
+        background: var(--primary-soft);
+        border-color: transparent;
+        box-shadow: inset 3px 0 0 var(--primary);
+      }
+    }
+
     @media (max-width: 600px) {
       body {
-        padding: 10px 6px 20px;
+        padding: 8px 6px 20px;
+      }
+
+      h2 {
+        font-size: 22px;
       }
 
       .section {
-        padding: 12px 10px 12px;
-        border-radius: 14px;
+        padding: 12px 10px;
+        border-radius: 8px;
         width: 100%;
       }
 
@@ -533,21 +669,23 @@
 
       th, td {
         white-space: nowrap;
-        padding: 7px 6px;
+        padding: 8px 7px;
       }
 
       .bottomNav {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 5px;
-        padding-left: 6px;
-        padding-right: 6px;
-        margin-bottom: 14px;
-        border-radius: 14px;
+        width: 100%;
+        margin-bottom: 12px;
+        border-radius: 8px;
+        padding: 5px;
       }
 
       .bottomNav button {
-        font-size: 11px;
-        padding: 9px 4px;
+        width: auto;
+        min-width: 104px;
+        justify-content: center;
+        font-size: 12px;
+        padding: 9px 10px;
+        margin-top: 0;
       }
 
       input[type=number] {
@@ -555,25 +693,110 @@
       }
 
       #scheduleOutput {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+        overflow-x: visible;
         padding-bottom: 2px;
       }
 
-      #scheduleOutput table {
-        display: table;
-        min-width: 560px;
+      #scheduleOutput .scheduleTable {
+        display: block;
+        min-width: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        overflow: visible;
       }
 
-      #scheduleOutput th,
-      #scheduleOutput td {
-        padding: 8px 7px;
+      #scheduleOutput .scheduleTable thead {
+        display: none;
       }
 
-      #scheduleOutput td:nth-child(3),
-      #scheduleOutput td:nth-child(5) {
-        width: 84px;
-        min-width: 84px;
+      #scheduleOutput .scheduleTable tbody {
+        display: grid;
+        gap: 8px;
+      }
+
+      #scheduleOutput .scheduleTable tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 46px 10px 46px minmax(0, 1fr);
+        align-items: center;
+        gap: 6px;
+        padding: 8px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+
+      #scheduleOutput .scheduleTable td {
+        display: flex;
+        min-width: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        white-space: normal;
+      }
+
+      #scheduleOutput .scheduleTable td:nth-child(1) {
+        display: none;
+      }
+
+      #scheduleOutput .scheduleTable td:nth-child(2),
+      #scheduleOutput .scheduleTable td:nth-child(6) {
+        align-items: center;
+        font-weight: 650;
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+
+      #scheduleOutput .scheduleTable td:nth-child(2) {
+        grid-column: 1;
+        justify-content: flex-end;
+        text-align: right;
+      }
+
+      #scheduleOutput .scheduleTable td:nth-child(6) {
+        grid-column: 5;
+        justify-content: flex-start;
+        text-align: left;
+      }
+
+      #scheduleOutput .scheduleTable td:nth-child(3),
+      #scheduleOutput .scheduleTable td:nth-child(5) {
+        align-items: center;
+        justify-content: center;
+      }
+
+      #scheduleOutput .scheduleTable td:nth-child(3) {
+        grid-column: 2;
+      }
+
+      #scheduleOutput .scheduleTable td:nth-child(5) {
+        grid-column: 4;
+      }
+
+      #scheduleOutput .scheduleTable td:nth-child(4) {
+        grid-column: 3;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        font-size: 0;
+        font-weight: 800;
+      }
+
+      #scheduleOutput .scheduleTable td:nth-child(4)::before {
+        content: 'vs';
+        font-size: 11px;
+        line-height: 1;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      #scheduleOutput .scheduleTable .scoreInput {
+        width: 44px !important;
+        min-width: 44px;
+        max-width: 44px;
+        padding-left: 4px;
+        padding-right: 4px;
       }
 
       .scoreInput,
@@ -592,34 +815,16 @@
 
     @media (max-width: 380px) {
       .bottomNav button {
-        font-size: 10px;
-        padding-left: 2px;
-        padding-right: 2px;
+        min-width: 96px;
+        font-size: 11px;
+        padding-left: 8px;
+        padding-right: 8px;
       }
 
       th, td {
-        padding: 6px 5px;
+        padding: 7px 6px;
       }
     }
-
-    body.authLocked > h2,
-    body.authLocked > .subTitle,
-    body.authLocked > .bottomNav,
-    body.authLocked > .section:not(#authSection) {
-      display: none !important;
-    }
-    #authSection.hidden,
-    .adminOnly.hidden {
-      display: none !important;
-    }
-    .authStatus {
-      margin-top: 10px;
-      font-size: 13px;
-      color: var(--muted);
-      min-height: 18px;
-    }
-    .authStatus.error { color: var(--danger); }
-    .authStatus.success { color: var(--accent); }
   </style>
 </head>
 <body>
@@ -802,8 +1007,8 @@
   })();
 </script>
 
-<h2>Welcome to Badminton Tournament</h2>
-<div class="subTitle">Manage tournaments, players, schedules, and leaderboards in one place.</div>
+<h2>Badminton Tournament Manager</h2>
+<div class="subTitle">Run tournaments, scoring, standings, finals, and history from one organized workspace.</div>
 <div class="section hidden" id="sessionBar" style="margin-bottom:12px;">
   <div class="row" style="justify-content: space-between;">
     <div><b>Signed in:</b> <span id="signedInUser">-</span></div>
@@ -848,6 +1053,7 @@
   <button id="tabPlayoff" class="bottomNavBtn" data-view="playoff" role="tab" aria-controls="viewPlayoff" aria-selected="false" disabled>Finals</button>
   <button id="tabUsers" class="bottomNavBtn" data-view="users" role="tab" aria-controls="usersAdminSection" aria-selected="false" disabled>Users</button>
   <button id="tabLeaderboard" class="bottomNavBtn" data-view="leaderboard" role="tab" aria-controls="viewLeaderboard" aria-selected="false">Leaderboard</button>
+  <button id="tabHistory" class="bottomNavBtn" data-view="history" role="tab" aria-controls="viewHistory" aria-selected="false">History</button>
 </div>
 
 <!-- Unified, feature-based screens (one feature per tab) -->
@@ -960,7 +1166,7 @@
   </div>
 
   <label for="bulkPlayersInput">Add Many Players (one per line or comma-separated)</label>
-  <textarea id="bulkPlayersInput" rows="4" style="width:100%; padding:8px; border-radius:6px; border:1px solid rgba(148, 163, 184, 0.7); background: rgba(15, 23, 42, 0.9); color: var(--text);" placeholder="e.g.\nAlice\nBob\nCharlie\n\nor: Alice, Bob, Charlie"></textarea>
+  <textarea id="bulkPlayersInput" rows="4" placeholder="e.g.\nAlice\nBob\nCharlie\n\nor: Alice, Bob, Charlie"></textarea>
   <div class="row" style="justify-content: flex-end;">
     <button id="bulkAddPlayersBtn" class="secondary" disabled>Add Many</button>
   </div>
@@ -1070,6 +1276,33 @@
   <h3 style="margin-top:0">Global Final Leaderboard</h3>
   <div class="hint">Player-based global leaderboard on this browser. Sorted by: Total Points → Titles → Runner-up → Games Played → Days Played.</div>
   <div id="finalLeaderboardOutput"></div>
+
+  <h3>Player Statistics</h3>
+  <div class="hint">Select a player to see tournament history, match record, scoring, finals, partners, and opponents from saved data.</div>
+  <div class="row">
+    <div class="col">
+      <label for="playerStatsSelect">Player</label>
+      <select id="playerStatsSelect">
+        <option value="">-- Select Player --</option>
+      </select>
+    </div>
+  </div>
+  <div id="playerStatsOutput" style="margin-top:12px"></div>
+</div>
+
+<!-- History tab -->
+<div class="section featureView hidden" id="viewHistory" role="tabpanel" aria-labelledby="tabHistory">
+  <h3 style="margin-top:0">History</h3>
+  <div class="hint">Review saved tournament data without switching the active tournament.</div>
+  <div class="row">
+    <div class="col">
+      <label for="historyTournamentSelect">Saved Tournament</label>
+      <select id="historyTournamentSelect">
+        <option value="">-- Select --</option>
+      </select>
+    </div>
+  </div>
+  <div id="historyOutput" style="margin-top:12px"></div>
 </div>
 
 <script>
@@ -1085,6 +1318,8 @@ const STORAGE_KEYS = {
   homePlayersDraft: 'bt_home_players_draft_v1',
   activeTournamentId: 'bt_active_tournament_id_v1',
   activeView: 'bt_active_view_v1',
+  historyTournamentId: 'bt_history_tournament_id_v1',
+  playerStatsPlayer: 'bt_player_stats_player_v1',
 };
 
   // ----------------------------
@@ -1099,6 +1334,7 @@ const STORAGE_KEYS = {
   const viewPoints = document.getElementById('viewPoints');
   const viewPlayoff = document.getElementById('viewPlayoff');
   const viewLeaderboard = document.getElementById('viewLeaderboard');
+  const viewHistory = document.getElementById('viewHistory');
   const viewUsers = document.getElementById('usersAdminSection');
   const bottomNav = document.getElementById('bottomNav');
 
@@ -1149,6 +1385,10 @@ const STORAGE_KEYS = {
   const finalMatchOutput = document.getElementById('finalMatchOutput');
   const pointsTableOutput = document.getElementById('pointsTableOutput');
   const finalLeaderboardOutput = document.getElementById('finalLeaderboardOutput');
+  const playerStatsSelect = document.getElementById('playerStatsSelect');
+  const playerStatsOutput = document.getElementById('playerStatsOutput');
+  const historyTournamentSelect = document.getElementById('historyTournamentSelect');
+  const historyOutput = document.getElementById('historyOutput');
 
   // active view
   let currentView = 'tournament';
@@ -1200,6 +1440,7 @@ const STORAGE_KEYS = {
       viewPoints,
       viewPlayoff,
       viewLeaderboard,
+      viewHistory,
       viewUsers,
     ].forEach(v => {
       if (!v) return;
@@ -1237,7 +1478,7 @@ const STORAGE_KEYS = {
 
     bottomNavButtons().forEach(btn => {
       const v = btn.dataset.view;
-      if (v === 'tournament' || v === 'players' || v === 'leaderboard') {
+      if (v === 'tournament' || v === 'players' || v === 'leaderboard' || v === 'history') {
         btn.disabled = false;
       } else if (v === 'users') {
         const isAdmin = !!currentAuthSession()?.isAdmin;
@@ -1278,6 +1519,7 @@ const STORAGE_KEYS = {
       points: viewPoints,
       playoff: viewPlayoff,
       leaderboard: viewLeaderboard,
+      history: viewHistory,
       users: viewUsers,
     };
     const el = map[view] || viewTournament;
@@ -1295,6 +1537,12 @@ const STORAGE_KEYS = {
     }
     if (view === 'leaderboard') {
       renderGlobalLeaderboard(computeGlobalLeaderboardRows());
+      refreshPlayerStatsSelect();
+      renderSelectedPlayerStats();
+    }
+    if (view === 'history') {
+      refreshHistoryDropdown();
+      renderSelectedHistoryTournament();
     }
     if (view === 'teams') {
       renderTeamsPreview();
@@ -1565,6 +1813,9 @@ const STORAGE_KEYS = {
       localStorage.removeItem(STORAGE_KEYS.activeTournamentId);
       localStorage.removeItem(STORAGE_KEYS.activeView);
     }
+    if (localStorage.getItem(STORAGE_KEYS.historyTournamentId) === id) {
+      localStorage.removeItem(STORAGE_KEYS.historyTournamentId);
+    }
   }
 
   function loadTournamentById(id) {
@@ -1792,6 +2043,607 @@ const STORAGE_KEYS = {
     });
     table.appendChild(tbody);
     finalLeaderboardOutput.appendChild(table);
+  }
+
+
+  // ----------------------------
+  // Player statistics
+  // ----------------------------
+  function addKnownPlayerName(names, player) {
+    const normalized = normalizePlayerName(player);
+    if (!normalized) return;
+    const key = lower(normalized);
+    if (!names.has(key)) names.set(key, normalized);
+  }
+
+  function getAllKnownPlayerNames() {
+    const names = new Map();
+    getAllSavedTournaments().forEach(t => {
+      (t.players || []).forEach(player => addKnownPlayerName(names, player));
+      Object.values(t.teamPlayers || {}).forEach(players => {
+        (players || []).forEach(player => addKnownPlayerName(names, player));
+      });
+    });
+    return [...names.values()].sort((a, b) => a.localeCompare(b));
+  }
+
+  function getTournamentTeams(t) {
+    return [...new Set([...(t?.teams || []), ...Object.keys(t?.teamPlayers || {})])];
+  }
+
+  function getTeamPlayersForStats(t, team) {
+    return (t?.teamPlayers?.[team] || []).map(normalizePlayerName).filter(Boolean);
+  }
+
+  function getPlayerTeamsForStats(t, playerLower) {
+    return getTournamentTeams(t).filter(team => {
+      return getTeamPlayersForStats(t, team).some(player => lower(player) === playerLower);
+    });
+  }
+
+  function hasNumericScore(value) {
+    if (value === null || value === undefined || value === '') return false;
+    return Number.isFinite(Number(value));
+  }
+
+  function getAllScoredMatchesForStats(t) {
+    const seen = new Set();
+    const matches = [];
+    [...(t?.matches || []), ...getHistoricalKnockoutMatches(t)].forEach(match => {
+      if (!match || !match.team1 || !match.team2) return;
+      if (!hasNumericScore(match.score1) || !hasNumericScore(match.score2)) return;
+      const key = [match.id || '', match.stage || '', match.team1, match.team2].join('||');
+      if (seen.has(key)) return;
+      seen.add(key);
+      matches.push(match);
+    });
+    return matches;
+  }
+
+  function getPlayerContributionForStats(t, playerLower) {
+    const contributions = computeTournamentContribution(t) || {};
+    return Object.values(contributions).find(row => lower(row.player) === playerLower) || null;
+  }
+
+  function getTournamentEntryForStats(id) {
+    return getIndex(STORAGE_KEYS.tournamentsIndex).find(item => item.id === id) || null;
+  }
+
+  function incrementCount(map, key) {
+    const normalized = normalizePlayerName(key);
+    if (!normalized) return;
+    map[normalized] = (map[normalized] || 0) + 1;
+  }
+
+  function computePlayerTournamentStats(t, playerLower) {
+    if (!t) return null;
+
+    const teams = getPlayerTeamsForStats(t, playerLower);
+    const rostered = teams.length > 0 || (t.players || []).some(player => lower(normalizePlayerName(player)) === playerLower);
+    if (!rostered) return null;
+
+    const teamSet = new Set(teams);
+    const finalResult = getHistoricalFinalResult(t);
+    const contribution = getPlayerContributionForStats(t, playerLower);
+    const summary = {
+      id: t.id,
+      name: t.name || 'Saved Tournament',
+      updatedAt: getTournamentEntryForStats(t.id)?.updatedAt || 0,
+      teams,
+      matchesPlayed: 0,
+      wins: 0,
+      losses: 0,
+      ties: 0,
+      pointsFor: 0,
+      pointsAgainst: 0,
+      rankPoints: contribution?.totalPoints || 0,
+      titles: contribution?.winnerCount || 0,
+      runnerUps: contribution?.runnerUpCount || 0,
+      teammates: {},
+      opponents: {},
+    };
+
+    teams.forEach(team => {
+      getTeamPlayersForStats(t, team).forEach(player => {
+        if (lower(player) !== playerLower) incrementCount(summary.teammates, player);
+      });
+    });
+
+    getAllScoredMatchesForStats(t).forEach(match => {
+      const playerTeam = teamSet.has(match.team1) ? match.team1 : teamSet.has(match.team2) ? match.team2 : '';
+      if (!playerTeam) return;
+
+      const opponentTeam = playerTeam === match.team1 ? match.team2 : match.team1;
+      const playerScore = Number(playerTeam === match.team1 ? match.score1 : match.score2);
+      const opponentScore = Number(playerTeam === match.team1 ? match.score2 : match.score1);
+
+      summary.matchesPlayed += 1;
+      summary.pointsFor += playerScore;
+      summary.pointsAgainst += opponentScore;
+      if (playerScore > opponentScore) summary.wins += 1;
+      else if (playerScore < opponentScore) summary.losses += 1;
+      else summary.ties += 1;
+
+      const opponentPlayers = getTeamPlayersForStats(t, opponentTeam);
+      if (opponentPlayers.length > 0) {
+        opponentPlayers.forEach(player => incrementCount(summary.opponents, player));
+      } else {
+        incrementCount(summary.opponents, opponentTeam);
+      }
+    });
+
+    if (!summary.titles && finalResult?.winner && teams.includes(finalResult.winner)) summary.titles = 1;
+    if (!summary.runnerUps && finalResult?.runnerUp && teams.includes(finalResult.runnerUp)) summary.runnerUps = 1;
+
+    return summary;
+  }
+
+  function computePlayerStatistics(playerName) {
+    const player = normalizePlayerName(playerName);
+    const playerLower = lower(player);
+    const stats = {
+      player,
+      rosteredTournaments: 0,
+      tournamentsPlayed: 0,
+      matchesPlayed: 0,
+      wins: 0,
+      losses: 0,
+      ties: 0,
+      pointsFor: 0,
+      pointsAgainst: 0,
+      rankPoints: 0,
+      titles: 0,
+      runnerUps: 0,
+      teammates: {},
+      opponents: {},
+      tournaments: [],
+    };
+
+    getAllSavedTournaments().forEach(t => {
+      const summary = computePlayerTournamentStats(t, playerLower);
+      if (!summary) return;
+
+      stats.rosteredTournaments += 1;
+      if (summary.teams.length > 0 || summary.matchesPlayed > 0) stats.tournamentsPlayed += 1;
+      stats.matchesPlayed += summary.matchesPlayed;
+      stats.wins += summary.wins;
+      stats.losses += summary.losses;
+      stats.ties += summary.ties;
+      stats.pointsFor += summary.pointsFor;
+      stats.pointsAgainst += summary.pointsAgainst;
+      stats.rankPoints += summary.rankPoints;
+      stats.titles += summary.titles;
+      stats.runnerUps += summary.runnerUps;
+      Object.entries(summary.teammates).forEach(([name, count]) => { stats.teammates[name] = (stats.teammates[name] || 0) + count; });
+      Object.entries(summary.opponents).forEach(([name, count]) => { stats.opponents[name] = (stats.opponents[name] || 0) + count; });
+      stats.tournaments.push(summary);
+    });
+
+    stats.pointDiff = stats.pointsFor - stats.pointsAgainst;
+    stats.winRate = stats.matchesPlayed > 0 ? Math.round((stats.wins / stats.matchesPlayed) * 100) : 0;
+    stats.tournaments.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    return stats;
+  }
+
+  function formatRecord(wins, losses, ties) {
+    return ties > 0 ? `${wins}-${losses}-${ties}` : `${wins}-${losses}`;
+  }
+
+  function topCountRows(counts, limit) {
+    return Object.entries(counts || {})
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, limit)
+      .map(([name, count]) => [name, count]);
+  }
+
+  function appendStatCard(parent, label, value) {
+    const card = document.createElement('div');
+    card.className = 'statCard';
+    const valueEl = document.createElement('div');
+    valueEl.className = 'statValue';
+    valueEl.textContent = value;
+    const labelEl = document.createElement('div');
+    labelEl.className = 'statLabel';
+    labelEl.textContent = label;
+    card.appendChild(valueEl);
+    card.appendChild(labelEl);
+    parent.appendChild(card);
+  }
+
+  function renderPlayerStatistics(stats) {
+    playerStatsOutput.innerHTML = '';
+    if (!stats || !stats.player) {
+      playerStatsOutput.appendChild(createHistoryHint('Select a player to view statistics.'));
+      return;
+    }
+
+    if (stats.rosteredTournaments === 0) {
+      playerStatsOutput.appendChild(createHistoryHint('No saved tournament data is available for this player yet.'));
+      return;
+    }
+
+    const heading = document.createElement('h4');
+    heading.textContent = stats.player;
+    heading.style.margin = '0 0 6px';
+    playerStatsOutput.appendChild(heading);
+
+    const note = document.createElement('div');
+    note.className = 'statSubtle';
+    note.textContent = 'Match record includes saved league/group matches plus saved finals/playoff matches with entered scores.';
+    playerStatsOutput.appendChild(note);
+
+    const grid = document.createElement('div');
+    grid.className = 'statGrid';
+    appendStatCard(grid, 'Tournaments', stats.tournamentsPlayed);
+    appendStatCard(grid, 'Matches', stats.matchesPlayed);
+    appendStatCard(grid, 'Record', formatRecord(stats.wins, stats.losses, stats.ties));
+    appendStatCard(grid, 'Win Rate', `${stats.winRate}%`);
+    appendStatCard(grid, 'Points For', stats.pointsFor);
+    appendStatCard(grid, 'Point Diff', stats.pointDiff);
+    appendStatCard(grid, 'Titles', stats.titles);
+    appendStatCard(grid, 'Runner-up', stats.runnerUps);
+    appendStatCard(grid, 'Rank Points', stats.rankPoints);
+    playerStatsOutput.appendChild(grid);
+
+    appendHistoryHeading(playerStatsOutput, 'Tournament Breakdown');
+    appendHistoryTable(playerStatsOutput, ['Tournament', 'Team / Players', 'Result', 'Matches', 'Record', 'PF', 'PA', 'PD', 'Rank Pts'], stats.tournaments.map(row => {
+      const result = row.titles > 0 ? 'Champion' : row.runnerUps > 0 ? 'Runner-up' : row.matchesPlayed > 0 ? 'Played' : 'Registered';
+      return [
+        row.name,
+        row.teams.length ? row.teams.map(team => getHistoricalTeamDisplayName(loadTournamentById(row.id), team)).join(', ') : '-',
+        result,
+        row.matchesPlayed,
+        formatRecord(row.wins, row.losses, row.ties),
+        row.pointsFor,
+        row.pointsAgainst,
+        row.pointsFor - row.pointsAgainst,
+        row.rankPoints,
+      ];
+    }));
+
+    appendHistoryHeading(playerStatsOutput, 'Most Common Partners');
+    const partnerRows = topCountRows(stats.teammates, 8);
+    if (partnerRows.length) appendHistoryTable(playerStatsOutput, ['Player', 'Shared Teams'], partnerRows);
+    else playerStatsOutput.appendChild(createHistoryHint('No doubles partner data yet.'));
+
+    appendHistoryHeading(playerStatsOutput, 'Most Faced Opponents');
+    const opponentRows = topCountRows(stats.opponents, 8);
+    if (opponentRows.length) appendHistoryTable(playerStatsOutput, ['Opponent', 'Matches'], opponentRows);
+    else playerStatsOutput.appendChild(createHistoryHint('No opponent data yet.'));
+  }
+
+  function refreshPlayerStatsSelect() {
+    if (!playerStatsSelect) return;
+    const players = getAllKnownPlayerNames();
+    const previous = playerStatsSelect.value || localStorage.getItem(STORAGE_KEYS.playerStatsPlayer) || '';
+    playerStatsSelect.innerHTML = '<option value="">-- Select Player --</option>';
+
+    players.forEach(player => {
+      const option = document.createElement('option');
+      option.value = player;
+      option.textContent = player;
+      playerStatsSelect.appendChild(option);
+    });
+
+    const selected = players.includes(previous) ? previous : (players[0] || '');
+    playerStatsSelect.value = selected;
+    if (selected) localStorage.setItem(STORAGE_KEYS.playerStatsPlayer, selected);
+    else localStorage.removeItem(STORAGE_KEYS.playerStatsPlayer);
+  }
+
+  function renderSelectedPlayerStats() {
+    if (!playerStatsOutput) return;
+    const player = playerStatsSelect?.value || '';
+    if (!player) {
+      playerStatsOutput.innerHTML = '';
+      playerStatsOutput.appendChild(createHistoryHint('No saved player data yet.'));
+      return;
+    }
+
+    localStorage.setItem(STORAGE_KEYS.playerStatsPlayer, player);
+    renderPlayerStatistics(computePlayerStatistics(player));
+  }
+
+
+  // ----------------------------
+  // Historical tournament viewer
+  // ----------------------------
+  function createHistoryHint(message) {
+    const div = document.createElement('div');
+    div.className = 'hint';
+    div.textContent = message;
+    return div;
+  }
+
+  function appendHistoryHeading(parent, text) {
+    const heading = document.createElement('h4');
+    heading.textContent = text;
+    heading.style.margin = '16px 0 6px';
+    parent.appendChild(heading);
+  }
+
+  function appendHistoryTable(parent, headers, rows) {
+    if (!rows || rows.length === 0) return false;
+
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    headers.forEach(header => {
+      const th = document.createElement('th');
+      th.textContent = header;
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      row.forEach(value => {
+        const td = document.createElement('td');
+        td.textContent = value === null || value === undefined || value === '' ? '-' : String(value);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    parent.appendChild(table);
+    return true;
+  }
+
+  function formatHistoryDate(ms) {
+    if (!ms) return '-';
+    const date = new Date(ms);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleString();
+  }
+
+  function formatHistoryShortDate(ms) {
+    if (!ms) return '';
+    const date = new Date(ms);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString();
+  }
+
+  function formatHistoryScore(value) {
+    return value === null || value === undefined || value === '' ? '-' : value;
+  }
+
+  function getTournamentIndexEntry(id) {
+    return getIndex(STORAGE_KEYS.tournamentsIndex).find(item => item.id === id) || null;
+  }
+
+  function getHistoricalTeamDisplayName(t, team) {
+    if (!team) return '-';
+    const players = (t?.teamPlayers?.[team] || []).map(normalizePlayerName).filter(Boolean);
+    return players.length ? players.join(' / ') : team;
+  }
+
+  function getHistoricalGroups(t) {
+    const storedGroups = Array.isArray(t?.groupAssignments)
+      ? t.groupAssignments
+          .map(group => Array.isArray(group) ? group.filter(Boolean) : [])
+          .filter(group => group.length > 0)
+      : [];
+    if (storedGroups.length > 0) return storedGroups;
+
+    const groupsCount = parseInt(t?.groupsCount || '0', 10);
+    const teamsPerGroup = parseInt(t?.teamsPerGroup || '0', 10);
+    if (!Number.isFinite(groupsCount) || !Number.isFinite(teamsPerGroup) || groupsCount < 1 || teamsPerGroup < 1) {
+      return [];
+    }
+    return partitionIntoGroups(t?.teams || [], groupsCount, teamsPerGroup).filter(group => group.length > 0);
+  }
+
+  function computeHistoricalStandings(t) {
+    const matches = Array.isArray(t?.matches) ? t.matches : [];
+    if (t?.type === 'Groups') {
+      return {
+        grouped: true,
+        groups: getHistoricalGroups(t).map((groupTeams, index) => ({
+          title: `Group ${index + 1}`,
+          rows: computeStandingsForTeams(
+            groupTeams,
+            matches.filter(match => match.stage === 'Group' && Number(match.groupIndex) === index)
+          ),
+        })),
+      };
+    }
+
+    return {
+      grouped: false,
+      rows: computeStandingsForTeams(t?.teams || [], matches.filter(match => match.stage !== 'Final')),
+    };
+  }
+
+  function getHistoricalFinalResult(t) {
+    return t?.finalResult
+      || computeFinalResultFromFinalMatch(t?.finalMatch)
+      || computeFinalResultFromFinalMatch(t?.knockout?.final);
+  }
+
+  function getHistoricalKnockoutMatches(t) {
+    const knockout = t?.knockout || {};
+    const matches = [
+      knockout.semifinal1,
+      knockout.semifinal2,
+      knockout.qualifier1,
+      knockout.eliminator,
+      knockout.qualifier2,
+      knockout.final,
+    ].filter(match => match && (
+      match.team1 || match.team2
+      || match.score1 !== null && match.score1 !== undefined
+      || match.score2 !== null && match.score2 !== undefined
+    ));
+
+    if (t?.finalMatch && !matches.some(match => match.id === t.finalMatch.id)) {
+      matches.push(t.finalMatch);
+    }
+    return matches;
+  }
+
+  function renderHistoricalSummary(t, entry) {
+    appendHistoryHeading(historyOutput, 'Summary');
+    appendHistoryTable(historyOutput, ['Field', 'Value'], [
+      ['Tournament', t.name || '-'],
+      ['Type', t.type || '-'],
+      ['Fixture', t.fixtureType || '-'],
+      ['Playoff Format', t.playoffFormat || '-'],
+      ['Match Type', t.matchType || '-'],
+      ['Teams', (t.teams || []).length],
+      ['Players', (t.players || []).length],
+      ['Created', formatHistoryDate(entry?.createdAt)],
+      ['Updated', formatHistoryDate(entry?.updatedAt)],
+    ]);
+  }
+
+  function renderHistoricalFinals(t) {
+    appendHistoryHeading(historyOutput, 'Finals');
+    const result = getHistoricalFinalResult(t);
+    if (result) {
+      appendHistoryTable(historyOutput, ['Champion', 'Runner-up'], [[
+        getHistoricalTeamDisplayName(t, result.winner),
+        getHistoricalTeamDisplayName(t, result.runnerUp),
+      ]]);
+    }
+
+    const knockoutMatches = getHistoricalKnockoutMatches(t);
+    if (knockoutMatches.length === 0) {
+      if (!result) historyOutput.appendChild(createHistoryHint('No finals recorded yet.'));
+      return;
+    }
+
+    appendHistoryTable(historyOutput, ['Stage', 'Team 1', 'Score', 'Score', 'Team 2'], knockoutMatches.map(match => [
+      match.stage || 'Final',
+      getHistoricalTeamDisplayName(t, match.team1),
+      formatHistoryScore(match.score1),
+      formatHistoryScore(match.score2),
+      getHistoricalTeamDisplayName(t, match.team2),
+    ]));
+  }
+
+  function renderHistoricalStandings(t) {
+    appendHistoryHeading(historyOutput, 'Standings');
+    const standings = computeHistoricalStandings(t);
+    const renderRows = rows => rows.map((row, index) => [
+      index + 1,
+      getHistoricalTeamDisplayName(t, row.team),
+      row.played,
+      row.won,
+      row.lost,
+      row.pf,
+      row.pa,
+      row.pd,
+      row.points,
+    ]);
+
+    if (standings.grouped) {
+      if (!standings.groups.length) {
+        historyOutput.appendChild(createHistoryHint('No group standings yet.'));
+        return;
+      }
+      standings.groups.forEach(group => {
+        appendHistoryHeading(historyOutput, group.title);
+        appendHistoryTable(historyOutput, ['Pos', 'Team Players', 'P', 'W', 'L', 'PF', 'PA', 'PD', 'Pts'], renderRows(group.rows));
+      });
+      return;
+    }
+
+    if (!standings.rows || standings.rows.length === 0) {
+      historyOutput.appendChild(createHistoryHint('No standings yet.'));
+      return;
+    }
+    appendHistoryTable(historyOutput, ['Pos', 'Team Players', 'P', 'W', 'L', 'PF', 'PA', 'PD', 'Pts'], renderRows(standings.rows));
+  }
+
+  function renderHistoricalSchedule(t) {
+    appendHistoryHeading(historyOutput, 'Schedule');
+    const matches = Array.isArray(t?.matches) ? t.matches : [];
+    if (!matches.length) {
+      historyOutput.appendChild(createHistoryHint('No matches recorded yet.'));
+      return;
+    }
+
+    appendHistoryTable(historyOutput, ['Stage', 'Match', 'Team 1', 'Score', 'Score', 'Team 2'], matches.map((match, index) => {
+      const stage = match.stage === 'Group' && match.groupIndex !== null && match.groupIndex !== undefined
+        ? `Group ${Number(match.groupIndex) + 1}`
+        : (match.stage || 'League');
+      return [
+        stage,
+        match.id || index + 1,
+        getHistoricalTeamDisplayName(t, match.team1),
+        formatHistoryScore(match.score1),
+        formatHistoryScore(match.score2),
+        getHistoricalTeamDisplayName(t, match.team2),
+      ];
+    }));
+  }
+
+  function renderHistoricalRosters(t) {
+    appendHistoryHeading(historyOutput, 'Teams');
+    const teams = Array.isArray(t?.teams) ? t.teams : [];
+    if (!teams.length) {
+      historyOutput.appendChild(createHistoryHint('No teams saved for this tournament.'));
+      return;
+    }
+
+    appendHistoryTable(historyOutput, ['Team', 'Players'], teams.map(team => [
+      team,
+      (t.teamPlayers?.[team] || []).map(normalizePlayerName).filter(Boolean).join(' / ') || '-',
+    ]));
+  }
+
+  function renderTournamentHistory(t, entry) {
+    historyOutput.innerHTML = '';
+    if (!t) {
+      historyOutput.appendChild(createHistoryHint('Select a saved tournament to view its history.'));
+      return;
+    }
+
+    const title = document.createElement('h4');
+    title.textContent = t.name || 'Saved Tournament';
+    title.style.margin = '0 0 8px';
+    historyOutput.appendChild(title);
+
+    renderHistoricalSummary(t, entry);
+    renderHistoricalFinals(t);
+    renderHistoricalStandings(t);
+    renderHistoricalSchedule(t);
+    renderHistoricalRosters(t);
+  }
+
+  function refreshHistoryDropdown() {
+    if (!historyTournamentSelect) return;
+    const idx = getIndex(STORAGE_KEYS.tournamentsIndex).filter(item => loadTournamentById(item.id));
+    const previous = historyTournamentSelect.value || localStorage.getItem(STORAGE_KEYS.historyTournamentId) || '';
+    historyTournamentSelect.innerHTML = '<option value="">-- Select --</option>';
+
+    idx.forEach(item => {
+      const option = document.createElement('option');
+      const date = formatHistoryShortDate(item.updatedAt);
+      option.value = item.id;
+      option.textContent = date ? `${item.name} (${date})` : item.name;
+      historyTournamentSelect.appendChild(option);
+    });
+
+    const selected = idx.some(item => item.id === previous) ? previous : (idx[0]?.id || '');
+    historyTournamentSelect.value = selected;
+    if (selected) localStorage.setItem(STORAGE_KEYS.historyTournamentId, selected);
+    else localStorage.removeItem(STORAGE_KEYS.historyTournamentId);
+  }
+
+  function renderSelectedHistoryTournament() {
+    if (!historyOutput) return;
+    const id = historyTournamentSelect?.value || '';
+    if (!id) {
+      historyOutput.innerHTML = '';
+      historyOutput.appendChild(createHistoryHint('No saved tournaments yet.'));
+      return;
+    }
+
+    localStorage.setItem(STORAGE_KEYS.historyTournamentId, id);
+    renderTournamentHistory(loadTournamentById(id), getTournamentIndexEntry(id));
   }
 
   // No nested home tabs now; bottom tabs drive navigation.
@@ -2161,6 +3013,14 @@ const STORAGE_KEYS = {
     if (!tournament) return;
     upsertTournamentIndex(tournament);
     saveTournament();
+    if (currentView === 'history') {
+      refreshHistoryDropdown();
+      renderSelectedHistoryTournament();
+    }
+    if (currentView === 'leaderboard') {
+      refreshPlayerStatsSelect();
+      renderSelectedPlayerStats();
+    }
   }
 
   // ----------------------------
@@ -2968,6 +3828,10 @@ function renderFinalSummary(finalMatch) {
     if (!ok) return;
     deleteTournamentById(id);
     refreshHomeDropdowns();
+    if (currentView === 'history') {
+      refreshHistoryDropdown();
+      renderSelectedHistoryTournament();
+    }
   });
 
   closeTournamentBtn.addEventListener('click', () => {
@@ -3064,6 +3928,28 @@ function renderFinalSummary(finalMatch) {
   playerListSelect.addEventListener('change', () => {
     loadPlayerListBtn.disabled = !playerListSelect.value;
   });
+
+  if (playerStatsSelect) {
+    playerStatsSelect.addEventListener('change', () => {
+      if (playerStatsSelect.value) {
+        localStorage.setItem(STORAGE_KEYS.playerStatsPlayer, playerStatsSelect.value);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.playerStatsPlayer);
+      }
+      renderSelectedPlayerStats();
+    });
+  }
+
+  if (historyTournamentSelect) {
+    historyTournamentSelect.addEventListener('change', () => {
+      if (historyTournamentSelect.value) {
+        localStorage.setItem(STORAGE_KEYS.historyTournamentId, historyTournamentSelect.value);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.historyTournamentId);
+      }
+      renderSelectedHistoryTournament();
+    });
+  }
 
   loadPlayerListBtn.addEventListener('click', () => {
     const pl = loadPlayerList(playerListSelect.value);
