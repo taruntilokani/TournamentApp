@@ -38,6 +38,87 @@ Validate API/database access:
 curl http://localhost:8080/api/app_storage
 ```
 
+
+
+## Login / Admin Access
+
+The app now uses Postgres-backed user accounts and sessions. The login page is served by the app; the old Nginx Basic Auth gate is no longer used.
+
+Seeded admin account for this machine:
+
+```text
+Username: admin
+Password: TournamentApp2026
+```
+
+Admins can create users from the in-app **Users** section. New users receive a temporary password and are forced to reset it on their first login before they can access the tournament screens. Each user can have up to 3 active login sessions at a time; a fourth login shows a session limit message until another device logs out or the session expires.
+
+Auth-related RPCs exposed through PostgREST:
+
+```bash
+# Login
+curl -X POST http://localhost:8080/api/rpc/login_user \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"TournamentApp2026"}'
+
+# List users with an admin session token
+curl -X POST http://localhost:8080/api/rpc/list_users \
+  -H 'Content-Type: application/json' \
+  -d '{"auth_token":"TOKEN"}'
+
+# Create a user with first-login password reset required
+curl -X POST http://localhost:8080/api/rpc/create_user \
+  -H 'Content-Type: application/json' \
+  -d '{"auth_token":"TOKEN","username":"scorer1","display_name":"Court Scorer","temporary_password":"TempPass2026","is_admin":false}'
+
+# Delete a user, admin-only. The current account and last active admin are protected.
+curl -X POST http://localhost:8080/api/rpc/delete_user \
+  -H 'Content-Type: application/json' \
+  -d '{"auth_token":"TOKEN","username":"scorer1"}'
+```
+
+Direct table endpoints are not granted to anonymous users; app data flows through token-protected RPCs.
+
+## Normalized Database Tables
+
+The frontend still uses the original browser-friendly storage keys, but PostgreSQL now decomposes tournament and player-list JSON into real relational tables through triggers on `api.app_storage`. This keeps the current UI stable while making reporting and future API work much cleaner.
+
+Normalized tables exposed through PostgREST:
+
+- `api.tournaments`
+- `api.tournament_players`
+- `api.teams`
+- `api.team_players`
+- `api.matches`
+- `api.player_lists`
+- `api.player_list_players`
+
+Useful API examples:
+
+```bash
+# direct table endpoints are blocked without RPC/session access
+curl -X POST http://localhost:8080/api/rpc/export_app_state -H 'Content-Type: application/json' -d '{"auth_token":"TOKEN"}'
+```
+
+The compatibility table remains available at `api.app_storage` for small UI-only keys such as active tab or local draft state. Tournament and player-list reads/writes now use normalized RPC endpoints.
+
+Normalized write/read RPCs:
+
+```bash
+# Rebuild browser app state from normalized tables
+curl -X POST http://localhost:8080/api/rpc/export_app_state -H 'Content-Type: application/json' -d '{"auth_token":"TOKEN"}'
+
+# Save a tournament payload into normalized tables
+curl -X POST http://localhost:8080/api/rpc/save_tournament \
+  -H 'Content-Type: application/json' \
+  -d '{"auth_token":"TOKEN","payload": {"id": "example", "name": "Example Tournament"}}'
+
+# Delete a tournament
+curl -X POST http://localhost:8080/api/rpc/delete_tournament \
+  -H 'Content-Type: application/json' \
+  -d '{"auth_token":"TOKEN","tournament_id": "example"}'
+```
+
 ## Expose Online With ngrok
 
 Create `.env` in `/home/devops/badminton-runtime` and set your ngrok token:
