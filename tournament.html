@@ -841,6 +841,16 @@
     const nativeSetItem = Storage.prototype.setItem;
     const nativeRemoveItem = Storage.prototype.removeItem;
     const sessionKey = 'bt_auth_session_v1';
+    const sessionNoticeKey = 'bt_auth_notice_v1';
+    const sessionIdleTimeoutMs = 2 * 60 * 1000;
+    const sessionRefreshMs = 1000;
+    const sessionActivityEvents = ['click', 'keydown', 'input', 'pointerdown', 'touchstart', 'scroll'];
+    let lastActivityAt = Date.now();
+    let lastRefreshAt = 0;
+    let idleTimer = null;
+    let activityWatchStarted = false;
+    let sessionRefreshInFlight = false;
+    let expiringSession = false;
 
     function isAppKey(key) { return typeof key === 'string' && key.startsWith(APP_KEY_PREFIX); }
     function isTournamentKey(key) { return typeof key === 'string' && key.startsWith(TOURNAMENT_PREFIX); }
@@ -856,26 +866,140 @@
     }
 
     function clearSession() {
+      stopSessionActivityWatch();
       sessionStorage.removeItem(sessionKey);
+    }
+
+    function setSessionNotice(message) {
+      if (message) sessionStorage.setItem(sessionNoticeKey, message);
+    }
+
+    function consumeSessionNotice() {
+      const message = sessionStorage.getItem(sessionNoticeKey) || '';
+      sessionStorage.removeItem(sessionNoticeKey);
+      return message;
     }
 
     function authToken() {
       return getSession()?.token || '';
     }
 
+    function expireLocalSession(message, notifyServer = true) {
+      if (expiringSession) return;
+      expiringSession = true;
+      const token = authToken();
+      clearSession();
+      setSessionNotice(message);
+      if (notifyServer && token) {
+        const payload = JSON.stringify({ auth_token: token });
+        try {
+          navigator.sendBeacon('/api/rpc/logout_user', new Blob([payload], { type: 'application/json' }));
+        } catch {
+          fetch('/api/rpc/logout_user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            keepalive: true,
+          }).catch(() => {});
+        }
+      }
+      location.reload();
+    }
+
+    async function handleExpiredResponse(res) {
+      if (!res || res.ok || !authToken()) return res;
+      try {
+        const text = await res.clone().text();
+        if (text.includes('Invalid or expired session')) {
+          expireLocalSession('Session expired after 2 minutes of inactivity. Please log in again.', false);
+        }
+      } catch (error) {
+        console.warn('Could not inspect auth response:', error);
+      }
+      return res;
+    }
+
     function sendJson(url, options) {
       const headers = { 'Content-Type': 'application/json', ...(options?.headers || {}) };
-      return fetch(url, { keepalive: true, ...options, headers }).catch((error) => {
+      return fetch(url, { keepalive: true, ...options, headers }).then(handleExpiredResponse).catch((error) => {
         console.warn('Database sync failed:', error);
       });
     }
 
-    function postRpc(path, payload) {
-      return fetch(`/api/rpc/${path}`, {
+    async function postRpc(path, payload) {
+      const res = await fetch(`/api/rpc/${path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload || {}),
       });
+      await handleExpiredResponse(res);
+      return res;
+    }
+
+    function scheduleIdleTimeout() {
+      window.clearTimeout(idleTimer);
+      if (!authToken()) return;
+      const elapsed = Date.now() - lastActivityAt;
+      const delay = Math.max(0, sessionIdleTimeoutMs - elapsed);
+      idleTimer = window.setTimeout(() => {
+        if (Date.now() - lastActivityAt >= sessionIdleTimeoutMs) {
+          expireLocalSession('Session expired after 2 minutes of inactivity. Please log in again.');
+          return;
+        }
+        scheduleIdleTimeout();
+      }, delay + 250);
+    }
+
+    async function refreshSession() {
+      const session = getSession();
+      if (!session?.token || sessionRefreshInFlight) return;
+      if (Date.now() - lastActivityAt >= sessionIdleTimeoutMs) {
+        expireLocalSession('Session expired after 2 minutes of inactivity. Please log in again.');
+        return;
+      }
+
+      sessionRefreshInFlight = true;
+      try {
+        const res = await postRpc('refresh_session', { auth_token: session.token });
+        if (res.ok) {
+          const refreshed = await res.json().catch(() => null);
+          if (refreshed?.expiresAt) {
+            setSession({ ...session, expiresAt: refreshed.expiresAt });
+          }
+        }
+      } finally {
+        sessionRefreshInFlight = false;
+      }
+    }
+
+    function recordSessionActivity() {
+      if (!authToken()) return;
+      lastActivityAt = Date.now();
+      scheduleIdleTimeout();
+      if (lastActivityAt - lastRefreshAt >= sessionRefreshMs) {
+        lastRefreshAt = lastActivityAt;
+        refreshSession();
+      }
+    }
+
+    function startSessionActivityWatch() {
+      if (!authToken()) return;
+      lastActivityAt = Date.now();
+      scheduleIdleTimeout();
+      if (!activityWatchStarted) {
+        sessionActivityEvents.forEach((eventName) => {
+          window.addEventListener(eventName, recordSessionActivity, { passive: true });
+        });
+        activityWatchStarted = true;
+      }
+      lastRefreshAt = Date.now();
+      refreshSession();
+    }
+
+    function stopSessionActivityWatch() {
+      window.clearTimeout(idleTimer);
+      idleTimer = null;
+      lastRefreshAt = 0;
     }
 
     function hydrateFromDatabase(token) {
@@ -891,6 +1015,9 @@
             if (isAppKey(key)) nativeSetItem.call(localStorage, key, items[key]);
           });
           return true;
+        }
+        if ((xhr.responseText || '').includes('Invalid or expired session')) {
+          setSessionNotice('Session expired after 2 minutes of inactivity. Please log in again.');
         }
         clearSession();
       } catch (error) {
@@ -957,14 +1084,17 @@
       getSession,
       setSession,
       clearSession,
+      consumeSessionNotice,
       hydrateFromDatabase,
       postRpc,
       authToken,
+      startSessionActivityWatch,
       async login(username, password) {
         const res = await postRpc('login_user', { username, password });
         if (!res.ok) throw new Error(await res.text());
         const session = await res.json();
         setSession(session);
+        startSessionActivityWatch();
         if (!session.mustResetPassword) hydrateFromDatabase(session.token);
         return session;
       },
@@ -4279,6 +4409,7 @@ function renderFinalSummary(finalMatch) {
 
   function showAuthenticatedApp(session) {
     document.body.classList.remove('authLocked');
+    window.btAuth.startSessionActivityWatch?.();
     const authSection = document.getElementById('authSection');
     const sessionBar = document.getElementById('sessionBar');
     const signedInUser = document.getElementById('signedInUser');
@@ -4296,6 +4427,7 @@ function renderFinalSummary(finalMatch) {
     const resetPanel = document.getElementById('resetPasswordPanel');
     if (authSection) authSection.classList.remove('hidden');
     if (session?.mustResetPassword) {
+      window.btAuth.startSessionActivityWatch?.();
       if (loginPanel) loginPanel.classList.add('hidden');
       if (resetPanel) resetPanel.classList.remove('hidden');
     } else if (session?.token) {
@@ -4387,6 +4519,8 @@ function renderFinalSummary(finalMatch) {
     const session = currentAuthSession();
     if (session?.token && !session.mustResetPassword) showAuthenticatedApp(session);
     else showLoginOrReset();
+    const notice = window.btAuth.consumeSessionNotice?.();
+    if (notice) setAuthStatus(document.getElementById('loginStatus'), notice, 'error');
 
     const loginBtn = document.getElementById('loginBtn');
     const resetBtn = document.getElementById('resetMyPasswordBtn');

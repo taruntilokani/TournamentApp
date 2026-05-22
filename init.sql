@@ -627,8 +627,11 @@ CREATE TABLE IF NOT EXISTS api.app_sessions (
   token TEXT PRIMARY KEY DEFAULT encode(gen_random_bytes(32), 'hex'),
   user_id UUID NOT NULL REFERENCES api.app_users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days'
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '2 minutes'
 );
+
+ALTER TABLE api.app_sessions
+  ALTER COLUMN expires_at SET DEFAULT NOW() + INTERVAL '2 minutes';
 
 DROP TRIGGER IF EXISTS app_users_touch_updated_at ON api.app_users;
 CREATE TRIGGER app_users_touch_updated_at
@@ -657,12 +660,35 @@ $$;
 CREATE OR REPLACE FUNCTION api.require_active_user(auth_token TEXT)
 RETURNS api.app_users
 LANGUAGE plpgsql
-STABLE
 AS $$
 DECLARE
   current_user_row api.app_users;
 BEGIN
-  SELECT * INTO current_user_row FROM api.current_user_from_token(auth_token);
+  DELETE FROM api.app_sessions WHERE expires_at <= NOW();
+
+  WITH refreshed_session AS (
+    UPDATE api.app_sessions s
+    SET expires_at = NOW() + INTERVAL '2 minutes'
+    FROM api.app_users u
+    WHERE s.token = auth_token
+      AND s.user_id = u.id
+      AND s.expires_at > NOW()
+      AND u.is_active = TRUE
+    RETURNING
+      u.id,
+      u.username,
+      u.display_name,
+      u.password_hash,
+      u.is_admin,
+      u.must_reset_password,
+      u.is_active,
+      u.created_at,
+      u.updated_at
+  )
+  SELECT * INTO current_user_row
+  FROM refreshed_session
+  LIMIT 1;
+
   IF current_user_row.id IS NULL THEN
     RAISE EXCEPTION 'Invalid or expired session' USING ERRCODE = '28000';
   END IF;
@@ -673,7 +699,6 @@ $$;
 CREATE OR REPLACE FUNCTION api.require_admin_user(auth_token TEXT)
 RETURNS api.app_users
 LANGUAGE plpgsql
-STABLE
 AS $$
 DECLARE
   current_user_row api.app_users;
@@ -693,6 +718,7 @@ AS $$
 DECLARE
   user_row api.app_users;
   session_token TEXT;
+  session_expires_at TIMESTAMPTZ;
   active_session_count INTEGER;
 BEGIN
   SELECT * INTO user_row
@@ -717,12 +743,13 @@ BEGIN
     RAISE EXCEPTION 'Login session limit exceeded. Please logout from another device before logging in again.' USING ERRCODE = '28000';
   END IF;
 
-  INSERT INTO api.app_sessions (user_id)
-  VALUES (user_row.id)
-  RETURNING token INTO session_token;
+  INSERT INTO api.app_sessions (user_id, expires_at)
+  VALUES (user_row.id, NOW() + INTERVAL '2 minutes')
+  RETURNING token, expires_at INTO session_token, session_expires_at;
 
   RETURN jsonb_build_object(
     'token', session_token,
+    'expiresAt', session_expires_at,
     'username', user_row.username,
     'displayName', user_row.display_name,
     'isAdmin', user_row.is_admin,
@@ -737,6 +764,28 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   DELETE FROM api.app_sessions WHERE token = auth_token;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION api.refresh_session(auth_token TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  user_row api.app_users;
+  session_expires_at TIMESTAMPTZ;
+BEGIN
+  user_row := api.require_active_user(auth_token);
+
+  SELECT s.expires_at INTO session_expires_at
+  FROM api.app_sessions s
+  WHERE s.token = auth_token;
+
+  RETURN jsonb_build_object(
+    'ok', TRUE,
+    'expiresAt', session_expires_at,
+    'username', user_row.username
+  );
 END;
 $$;
 
@@ -777,7 +826,6 @@ RETURNS TABLE (
   updated_at TIMESTAMPTZ
 )
 LANGUAGE plpgsql
-STABLE
 AS $$
 BEGIN
   PERFORM api.require_admin_user(auth_token);
@@ -921,7 +969,6 @@ $$;
 CREATE OR REPLACE FUNCTION api.export_app_state(auth_token TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql
-STABLE
 AS $$
 DECLARE
   result JSONB;
@@ -1021,6 +1068,7 @@ GRANT SELECT ON api.app_users TO web_anon;
 GRANT EXECUTE ON FUNCTION
   api.login_user(TEXT, TEXT),
   api.logout_user(TEXT),
+  api.refresh_session(TEXT),
   api.change_my_password(TEXT, TEXT, TEXT),
   api.list_users(TEXT),
   api.create_user(TEXT, TEXT, TEXT, TEXT, BOOLEAN),
@@ -1064,6 +1112,7 @@ ALTER FUNCTION api.require_active_user(TEXT) SECURITY DEFINER SET search_path = 
 ALTER FUNCTION api.require_admin_user(TEXT) SECURITY DEFINER SET search_path = api, public;
 ALTER FUNCTION api.login_user(TEXT, TEXT) SECURITY DEFINER SET search_path = api, public;
 ALTER FUNCTION api.logout_user(TEXT) SECURITY DEFINER SET search_path = api, public;
+ALTER FUNCTION api.refresh_session(TEXT) SECURITY DEFINER SET search_path = api, public;
 ALTER FUNCTION api.change_my_password(TEXT, TEXT, TEXT) SECURITY DEFINER SET search_path = api, public;
 ALTER FUNCTION api.list_users(TEXT) SECURITY DEFINER SET search_path = api, public;
 ALTER FUNCTION api.create_user(TEXT, TEXT, TEXT, TEXT, BOOLEAN) SECURITY DEFINER SET search_path = api, public;
@@ -1095,6 +1144,7 @@ FROM web_anon;
 GRANT EXECUTE ON FUNCTION
   api.login_user(TEXT, TEXT),
   api.logout_user(TEXT),
+  api.refresh_session(TEXT),
   api.change_my_password(TEXT, TEXT, TEXT),
   api.list_users(TEXT),
   api.create_user(TEXT, TEXT, TEXT, TEXT, BOOLEAN),
