@@ -153,4 +153,3 @@ This keeps the database volume. To delete all saved data too:
 ```bash
 sudo -n docker compose down -v
 ```
-
