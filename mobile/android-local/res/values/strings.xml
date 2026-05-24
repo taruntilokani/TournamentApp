@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Tournament App</string>
+    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#2563eb</item>
+    </style>
+</resources>

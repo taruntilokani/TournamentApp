@@ -3,3 +3,12 @@
 *.dump
 *.backup
 node_modules/
+# Android build outputs and installers
+apk-installers/
+dist/
+mobile/**/build/
+mobile/**/dist/
+*.apk
+*.idsig
+# Local signing keys
+*.keystore
